@@ -105,17 +105,19 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
 if __name__=='__main__':
 
     ##### DEFINITIONS AND FILE PATHS, MODIFY HERE #####
-    nside = 1024 #nside at which to create maps, ideally 8192
-    ellmax = 3000 #maximum ell for which to compute power spectra, ideally 10000
-    galactic_components = ['d1', 's1', 'a1', 'f1'] #pysm predefined galactic component strings
+    nside = 8192 #nside at which to create maps, ideally 8192
+    ellmax = 10000 #maximum ell for which to compute power spectra, ideally 10000
+    galactic_components = ['d10', 's5', 'a1', 'f1'] #pysm predefined galactic component strings
     pol = False #whether or not to compute E-mode maps
     passband_file = "passbands_20220316/AdvACT_Passbands.h5" #file containing ACT passband information, /global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
     agora_sims_dir = 'agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
     ksz_reionization_file = 'agora/FBN_kSZ_PS_patchy.txt' #file with columns ell, D_ell (uK^2) of patchy kSZ, set to None if no such file
     beam_dir = 'beams'
-    output_dir = 'outputs_nside1024' #directory in which to put outputs (can be full path)
-    plot_dir = 'plots_nside1024'
+    output_dir = 'outputs_nside8192' #directory in which to put outputs (can be full path)
+    plot = True #whether to produce plots
+    plot_dir = 'plots_nside8192' #only needs to be defined if plot==True
 
     main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=pol, 
         ksz_reionization_file=ksz_reionization_file, save_intermediate=True, verbose=True, output_dir=output_dir)
-    plot_outputs(output_dir, plot_dir, ellmax, pol)
+    if plot:
+        plot_outputs(output_dir, plot_dir, ellmax, pol)

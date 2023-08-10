@@ -6,6 +6,6 @@ Modify the definitions in main.py.
 ```python main.py```   
 
 ## Dependencies
-healpy  
-pixell 
-h5py 
+healpy     
+pixell     
+h5py   

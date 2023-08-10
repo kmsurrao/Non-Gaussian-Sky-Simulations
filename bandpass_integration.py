@@ -71,7 +71,7 @@ def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, 
     if not pol: returns bandpass integrated temperature (intensity) map only in healpix format
     '''
     sky = pysm3.Sky(nside=nside, preset_strings=components)
-    map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)  
+    map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
     if central_freq is None: central_freq = np.mean(bandpass_freqs)
     map_ = map_.to(u.K_CMB, equivalencies=u.cmb_equivalencies(central_freq*u.GHz))
     if plot: hp.mollview(map_[0], title=f'{central_freq} GHz Galactic Components')
