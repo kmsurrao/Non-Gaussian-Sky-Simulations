@@ -8,7 +8,7 @@ from bandpass_integration import get_bandpass_freqs_and_weights, get_galactic_co
 from beams import apply_beam, healpix2CAR
 
 def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=False, 
-        ksz_reionization_file=None, save_intermediate=False, verbose=False):
+        ksz_reionization_file=None, save_intermediate=False, verbose=False, output_dir='outputs'):
     '''
     ARGUMENTS
     ---------
@@ -21,6 +21,7 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
     pol: Bool, False if only computing intensity maps, True if computing E-mode maps
     ksz_reionization_file: str, file containing Cl for reionization kSZ
     save_intermediate: Bool, whether to save maps at intermediate steps
+    output_dir: str, directory in which to put output files if save_intermediate is True
     
 
     RETURNS
@@ -30,11 +31,9 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
     '''
 
     #set up output directory if save_intermediate is True
-    if save_intermediate:
-        output_dir = 'outputs'
-        if not os.path.isdir(output_dir):
-            env = os.environ.copy()
-            subprocess.call(f'mkdir {output_dir}', shell=True, env=env)
+    if save_intermediate and not os.path.isdir(output_dir):
+        env = os.environ.copy()
+        subprocess.call(f'mkdir {output_dir}', shell=True, env=env)
 
 
     #get bandpass frequencies and weights
@@ -57,7 +56,7 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
     if pol: #index as all_maps[freq, gal or extragal, I/Q/U, pixel], freqs in decreasing order
         all_maps = np.zeros((3, 2, 3, 12*nside**2))
     for i, freq in enumerate([220, 150, 90]):
-        all_maps[i,0] = get_galactic_comp_map(galactic_components, nside, bandpass_freqs, central_freq=None, bandpass_weights=None, plot=False, pol=pol)
+        all_maps[i,0] = get_galactic_comp_map(galactic_components, nside, all_bandpass_freqs[i], central_freq=None, bandpass_weights=all_bandpass_weights[i], plot=False, pol=pol)
         all_maps[i,1] = get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reionization_file=ksz_reionization_file, plot=False, pol=pol)
     if save_intermediate:
         pickle.dump(all_maps, open(f'{output_dir}/gal_and_extragal_before_beam.p', 'wb'))
@@ -109,10 +108,11 @@ if __name__=='__main__':
     ellmax = 50 #maximum ell for which to compute power spectra, ideally 10000
     galactic_components = ['d1', 's1', 'a1', 'f1'] #pysm predefined galactic component strings
     pol = False #whether or not to compute E-mode maps
-    passband_file = "passbands_20220316/AdvACT_Passbands.h5" #file containing ACT passband information
-    agora_sims_dir = 'agora' #directory containing agora extragalactic sims
+    passband_file = "passbands_20220316/AdvACT_Passbands.h5" #file containing ACT passband information, /global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
+    agora_sims_dir = 'agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
     ksz_reionization_file = 'agora/FBN_kSZ_PS_patchy.txt' #file with columns ell, D_ell (uK^2) of patchy kSZ, set to None if no such file
     beam_dir = 'beams'
+    output_dir = 'outputs' #directory in which to put outputs (can be full path)
 
     main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=pol, 
-        ksz_reionization_file=ksz_reionization_file, save_intermediate=True, verbose=True)
+        ksz_reionization_file=ksz_reionization_file, save_intermediate=True, verbose=True, output_dir=output_dir)
