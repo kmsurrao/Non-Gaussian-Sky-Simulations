@@ -1,3 +1,5 @@
+outputs*/*
+plots*/*
 .ipynb_checkpoints/*
 __pycache__/*
 agora/*
@@ -11,3 +13,4 @@ passbands_20220316/*
 *~
 .DS_Store/*
 .DS_Store
+testing.ipynb

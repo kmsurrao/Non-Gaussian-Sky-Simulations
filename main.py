@@ -6,6 +6,7 @@ import pickle
 from pixell import enmap
 from bandpass_integration import get_bandpass_freqs_and_weights, get_galactic_comp_map, get_extragalactic_comp_map
 from beams import apply_beam, healpix2CAR
+from make_plots import plot_outputs
 
 def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=False, 
         ksz_reionization_file=None, save_intermediate=False, verbose=False, output_dir='outputs'):
@@ -104,15 +105,17 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
 if __name__=='__main__':
 
     ##### DEFINITIONS AND FILE PATHS, MODIFY HERE #####
-    nside = 32 #nside at which to create maps, ideally 8192
-    ellmax = 50 #maximum ell for which to compute power spectra, ideally 10000
+    nside = 1024 #nside at which to create maps, ideally 8192
+    ellmax = 3000 #maximum ell for which to compute power spectra, ideally 10000
     galactic_components = ['d1', 's1', 'a1', 'f1'] #pysm predefined galactic component strings
     pol = False #whether or not to compute E-mode maps
     passband_file = "passbands_20220316/AdvACT_Passbands.h5" #file containing ACT passband information, /global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
     agora_sims_dir = 'agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
     ksz_reionization_file = 'agora/FBN_kSZ_PS_patchy.txt' #file with columns ell, D_ell (uK^2) of patchy kSZ, set to None if no such file
     beam_dir = 'beams'
-    output_dir = 'outputs' #directory in which to put outputs (can be full path)
+    output_dir = 'outputs_nside1024' #directory in which to put outputs (can be full path)
+    plot_dir = 'plots_nside1024'
 
     main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=pol, 
         ksz_reionization_file=ksz_reionization_file, save_intermediate=True, verbose=True, output_dir=output_dir)
+    plot_outputs(output_dir, plot_dir, ellmax, pol)
