@@ -2,6 +2,7 @@ import numpy as np
 import healpy as hp
 import pickle
 import pymaster as nmt
+import matplotlib.pyplot as plt
 
 def get_mask_deconvolved_spectrum(mask, ells_per_bin, map1, map2=None):
     '''
@@ -32,7 +33,8 @@ def get_mask_deconvolved_spectrum(mask, ells_per_bin, map1, map2=None):
 if __name__ == '__main__':
 
     output_dir = 'outputs'
-    maps = f'{output_dir}/beam_convolved_maps.p'
+    plot_dir = 'plots'
+    maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
     mask_file = '/scratch/09334/ksurrao/HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
 
     mask = hp.read_map(mask_file, field=(5)) #90% fsky
@@ -48,3 +50,18 @@ if __name__ == '__main__':
 
     pickle.dump(spectra, open(f'{output_dir}/mask_deconvolved_spectra.p'))
     pickle.dump(ell_eff, open(f'{output_dir}/ell_eff.p'))
+
+    #plot
+    freqs = [220, 150, 90]
+    for freq in range(3):
+        plt.clf()
+        hp.mollview(spectra[freq], title=f'{freqs[freq]} GHz')
+        plt.savefig(f'{plot_dir}/gal_mask_{freqs[freq]}.png')
+    plt.clf()
+    for freq in range(3):
+        plt.plot(ell_eff, to_dl*spectra[freq], label=f'{freqs[freq]} GHz')
+    plt.xlabel(r'$\ell$')
+    plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+    plt.grid()
+    plt.legend()
+    plt.savefig(f'{plot_dir}/gal_mask_deconvolved_power_spectra.png')
