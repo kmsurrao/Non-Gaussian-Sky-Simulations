@@ -5,6 +5,7 @@ import pysm3
 import pysm3.units as u
 import h5py
 from scipy.interpolate import interp1d
+import pickle
 
 
 def get_bandpass_freqs_and_weights(central_freq, passband_file, plot=False):
@@ -52,7 +53,7 @@ def get_bandpass_freqs_and_weights(central_freq, passband_file, plot=False):
     return frequencies, bandpass_weights
 
 
-def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, bandpass_weights=None, plot=False, pol=False):
+def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, bandpass_weights=None, pol=False, ellmax=None, output_dir=None):
     '''
     ARGUMENTS
     ---------
@@ -64,20 +65,40 @@ def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, 
                      (length should be the same as bandpass_freqs)
     plot: Bool, whether to make healpy plot of temperature map
     pol: Bool, returns [I,Q,U] if true, otherwise just I
+    ellmax: int, maximum ell for which to compute power spectra of each component
+    output_dir: str, directory in which to put power spectrum pickle file, 
+                power spectrum not saved if output_dir is None
     
     RETURNS
     -------
     if pol: returns bandpass integrated [I,Q,U] in healpix format
     if not pol: returns bandpass integrated temperature (intensity) map only in healpix format
     '''
-    sky = pysm3.Sky(nside=nside, preset_strings=components)
-    map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
-    if central_freq is None: central_freq = np.mean(bandpass_freqs)
-    map_ = map_.to(u.K_CMB, equivalencies=u.cmb_equivalencies(central_freq*u.GHz))
-    if plot: hp.mollview(map_[0], title=f'{central_freq} GHz Galactic Components')
-    return map_ if pol else map_[0]
 
-def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reionization_file=None, plot=False, pol=False):
+    total_map = np.zeros((3, 12*nside**2))
+
+    if output_dir:
+        if ellmax is None:
+            ellmax = 3*nside-1
+        power_spectra = np.zeros((len(components), ellmax+1))
+        for c, comp in enumerate(components):
+            sky = pysm3.Sky(nside=nside, preset_strings=[comp])
+            map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
+            if central_freq is None: central_freq = np.mean(bandpass_freqs)
+            map_ = map_.to(u.K_CMB, equivalencies=u.cmb_equivalencies(central_freq*u.GHz))
+            total_map += map_
+            power_spectra[c] = hp.anafast(map_[0], lmax=ellmax)
+        pickle.dump(power_spectra, open(f'{output_dir}/gal_comp_spectra_{central_freq}.p', 'wb'))
+
+    else:
+        sky = pysm3.Sky(nside=nside, preset_strings=components)
+        map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
+        if central_freq is None: central_freq = np.mean(bandpass_freqs)
+        total_map = map_.to(u.K_CMB, equivalencies=u.cmb_equivalencies(central_freq*u.GHz))
+
+    return total_map if pol else total_map[0]
+
+def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reionization_file=None, pol=False, output_dir=None):
     '''
     ARGUMENTS
     ---------
@@ -86,18 +107,17 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
     ellmax: int, maximum ell for which to compute power spectra
     agora_sims_dir: str, directory containing agora extragalactic sims with ACT passbands
     ksz_reionization_file: str, file containing Cl for reionization kSZ
-    plot: Bool, whether to make healpy plot of temperature map
     pol: Bool, returns [I,Q,U] if true, otherwise just I
+    output_dir: str, directory in which to put power spectrum pickle file, 
+            power spectrum not saved if output_dir is None
     
     RETURNS
     -------
     if pol: returns bandpass integrated numpy array of [I,Q,U] in healpix format, units of K
     if not pol: returns bandpass integrated temperature (intensity) map only in healpix format, units of K
     '''
-    if freq==220:
-        filename = f'{agora_sims_dir}/agora_act_220ghz_lcmbNG_lcibNG_ltszNGbahamas80_lkszNGbahamas80_lradNG_uk.fits'
-    else:
-        filename = f'{agora_sims_dir}/mdpl2_act_{freq}ghz_lcmbNG_lcibNG_ltszNGbahamas80_lkszNGbahamas80_lradNG_uk.fits'
+
+    filename = f'{agora_sims_dir}/agora_act_{freq}ghz_lcmbNG_lcibNG_ltszNGbahamas80_lkszNGbahamas80_lradNG_uk.fits'
     if pol:
         I,Q,U = 10**(-6)*hp.read_map(filename, field=[0,1,2])
         I = hp.ud_grade(I, nside)
@@ -106,6 +126,7 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
     else:
         I = 10**(-6)*hp.read_map(filename)
         I = hp.ud_grade(I, nside)
+
     if ksz_reionization_file is not None:
         ells_ksz_patchy, ksz_patchy = np.transpose(np.loadtxt(ksz_reionization_file))
         ksz_patchy *= 10**(-12) #convert from uK^2 to K^2
@@ -116,6 +137,16 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
         ksz_patchy[0] = 0
         ksz_patchy_realization = hp.synfast(ksz_patchy, nside)
         I += ksz_patchy_realization
-    if plot: 
-        hp.mollview(I, title=f'{freq} GHz Extragalactic Components')
+
+    if output_dir:
+        freqs = [220, 150, 90]
+        comps = ['lcmbNG', 'lkszNGbahamas80', 'ltszNGbahamas80', 'lcibNG', 'lradNG']
+        for freq in freqs:
+            power_spectra = np.zeros((len(comps)+1, ellmax+1)) #CMB, kSZ, tSZ, CIB, radio, reionization kSZ
+            for c, comp in enumerate(comps):
+                cmap = hp.read_map(f'{agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits')
+                power_spectra[c] = hp.anafast(cmap, lmax=ellmax)
+            power_spectra[-1] = ksz_patchy
+            pickle.dump(power_spectra, open(f'{output_dir}/extragal_comp_spectra_{freq}.p', 'wb'))
+
     return np.array([I,Q,U]) if pol else I

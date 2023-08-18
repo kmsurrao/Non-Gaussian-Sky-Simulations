@@ -20,8 +20,7 @@ def apply_beam(map_, beamfile, pol):
     
     RETURNS
     -------
-    frequencies: numpy array of frequencies (GHz) in the passband
-    bandpass_weights: numpy array of bandpass weights (with nu^2 divided out)
+    beam_convolved_map: ndarray of beam-convolved [I,Q,U] if pol, otherwise just I
     '''
     data = np.loadtxt(beamfile)
     Bl = data[:,1]
@@ -40,7 +39,7 @@ def healpix2CAR(healpix_map, ellmax, pol):
     
     RETURNS
     -------
-    car_map: numpy array, either [I,Q,U] CAR maps if pol, or just one intensity CAR map if not pol
+    car_map: ndarray, either [I,Q,U] CAR maps if pol, or just one intensity CAR map if not pol
     '''
     res = np.pi/ellmax*(180/np.pi)*60.
     shape, wcs = enmap.fullsky_geometry(res=res * utils.arcmin, proj='car')

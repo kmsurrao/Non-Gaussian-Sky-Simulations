@@ -93,8 +93,10 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
             if not pol:
                 plt.plot(ells[2:], (to_dl*hp.anafast(freq_maps[freq], lmax=ellmax))[2:], label=f'{freqs[freq]} GHz')
             else:
-                for map_type in range(3):
-                    plt.plot(ells[2:], (to_dl*hp.anafast(freq_maps[freq, map_type], lmax=ellmax))[2:], label=f'{freqs[freq]} GHz {map_types[map_type]} Map')       
+                spectra = hp.anafast(freq_maps[freq], lmax=ellmax, pol=True)
+                spectra_types = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
+                for t in range(6):
+                    plt.plot(ells[2:], (to_dl*spectra[t])[2:], label=f'{freqs[freq]} GHz {spectra_types[t]}')       
         plt.xlabel(r'$\ell$')
         plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
         plt.grid()
@@ -121,8 +123,10 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
             if not pol:
                 plt.plot(ells[2:], (to_dl*hp.anafast(beam_convolved_maps[freq], lmax=ellmax))[2:], label=f'{freqs[freq]} GHz')
             else:
-                for map_type in range(3):
-                    plt.plot(ells[2:], (to_dl*hp.anafast(beam_convolved_maps[freq, map_type], lmax=ellmax))[2:], label=f'{freqs[freq]} GHz {map_types[map_type]} Map') 
+                spectra = hp.anafast(beam_convolved_maps[freq], lmax=ellmax, pol=True)
+                spectra_types = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
+                for t in range(6):
+                    plt.plot(ells[2:], (to_dl*spectra[t])[2:], label=f'{freqs[freq]} GHz {spectra_types[t]}')
         plt.xlabel(r'$\ell$')
         plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
         plt.grid()
@@ -134,16 +138,23 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
     if which == 'all' or 'CAR_maps' in which:
         def eshow(x,**kwargs): enplot.show(enplot.plot(x,**kwargs))
         for i, freq in enumerate([220, 150, 90]):
-            plt.clf()
-            map_ = enmap.read_map(f'sim_{freq}GHz')
-            eshow(map_)
-            plt.savefig(f'{plot_dir}/CAR_map_{freq}.png')
+            for map_type in range(3):
+                plt.clf()
+                map_ = enmap.read_map(f'sim_{freq}GHz')
+                eshow(map_)
+                plt.savefig(f'{plot_dir}/CAR_{map_types[map_type]}map_{freq}.png')
+                if not pol: break
         plt.clf()
         for i, freq in enumerate([220, 150, 90]):
             map_ = enmap.read_map(f'sim_{freq}GHz')
             alm = curvedsky.map2alm(map_, lmax=ellmax)
             cl = curvedsky.alm2cl(alm)
-            plt.plot(ells, ells*(ells+1)/2/np.pi*cl[0], label=f'{freq} GHz')
+            if not pol:
+                plt.plot(ells, ells*(ells+1)/2/np.pi*cl[0], label=f'{freq} GHz')
+            else:
+                spectra_types = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
+                for t in range(6):
+                    plt.plot(ells[2:], (to_dl*cl[t])[2:], label=f'{freqs[freq]} GHz {spectra_types[t]}')
         plt.xlabel(r'$\ell$')
         plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
         plt.grid()
