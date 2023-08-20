@@ -42,7 +42,7 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
     all_bandpass_freqs = []
     all_bandpass_weights = []
     for central_freq in [220, 150, 90]:
-        bandpass_freqs, bandpass_weights = get_bandpass_freqs_and_weights(central_freq, passband_file, plot=True)
+        bandpass_freqs, bandpass_weights = get_bandpass_freqs_and_weights(central_freq, passband_file)
         all_bandpass_freqs.append(bandpass_freqs)
         all_bandpass_weights.append(bandpass_weights)
     if save_intermediate:
@@ -87,34 +87,35 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
         print('Got beam-convolved maps', flush=True)
 
 
-    #convert each frequency map from healpix to CAR
-    car_maps = []
-    freqs = [220, 150, 90]
-    for freq in range(3):
-        car_map = healpix2CAR(beam_convolved_maps[freq], ellmax, pol)
-        car_maps.append(car_map)
-        enmap.write_map(f'sim_{freqs[freq]}GHz', car_map)
-    if verbose:
-        print('Got CAR maps', flush=True)
+    # #convert each frequency map from healpix to CAR
+    # car_maps = []
+    # freqs = [220, 150, 90]
+    # for freq in range(3):
+    #     car_map = healpix2CAR(beam_convolved_maps[freq], ellmax, pol)
+    #     car_maps.append(car_map)
+    #     enmap.write_map(f'sim_{freqs[freq]}GHz', car_map)
+    # if verbose:
+    #     print('Got CAR maps', flush=True)
 
-    return car_maps
+    # return car_maps
 
 
 if __name__=='__main__':
 
     ##### DEFINITIONS AND FILE PATHS, MODIFY HERE #####
+    base_dir = '/scratch/09334/ksurrao/ACT_sims' #'/scratch/09334/ksurrao/ACT_sims' for Stampede, '.' for terremoto
     nside = 8192 #nside at which to create maps, ideally 8192
     ellmax = 10000 #maximum ell for which to compute power spectra, ideally 10000
     galactic_components = ['d10', 's5', 'a1', 'f1'] #pysm predefined galactic component strings
     pol = False #whether or not to compute E-mode maps
-    passband_file = 'passbands_20220316/AdvACT_Passbands.h5' #file containing ACT passband information, /global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
-    agora_sims_dir = 'agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
+    passband_file = f'{base_dir}/passbands_20220316/AdvACT_Passbands.h5' #file containing ACT passband information
+    agora_sims_dir = f'{base_dir}/agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
     ksz_reionization_file = f'{agora_sims_dir}/FBN_kSZ_PS_patchy.txt' #file with columns ell, D_ell (uK^2) of patchy kSZ, set to None if no such file
-    beam_dir = 'beams'
-    output_dir = f'outputs_nside{nside}' #directory in which to put outputs (can be full path)
+    beam_dir = f'{base_dir}/beams', #/global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
+    output_dir = f'{base_dir}/outputs_nside{nside}' #directory in which to put outputs (can be full path)
     plot = True #whether to produce plots
-    plot_dir = f'plots_nside{nside}' #only needs to be defined if plot==True
-    plots_to_make = ['passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 'beam_convolved_maps', 'CAR_maps'] #only needs to be defined if plot==True
+    plot_dir = f'{base_dir}/plots_nside{nside}' #only needs to be defined if plot==True
+    plots_to_make = ['passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 'beam_convolved_maps', 'all_comp_spectra'] #only needs to be defined if plot==True
 
     main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=pol, 
         ksz_reionization_file=ksz_reionization_file, save_intermediate=True, verbose=True, output_dir=output_dir)
@@ -125,5 +126,5 @@ if __name__=='__main__':
     # #plot and save mask-deconvolved spectra using 70% fsky galactic mask
     # ells_per_bin = 50
     # beam_convolved_maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
-    # mask_file = 'HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
+    # mask_file = f'{base_dir}/HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
     # plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, beam_convolved_maps, mask_file, ellmax, ells_per_bin, pol=pol)

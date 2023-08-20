@@ -22,6 +22,7 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
         'freq_maps_no_beam': healpix frequency maps before applying beam
         'beam_convolved_maps': healpix beam-convolved frequency maps
         'CAR_maps': CAR beam-convolved frequency maps
+        'all_comp_spectra': power spectra of all components
         Alternatively which can be set to a single string 'all' to make all plots.
 
     '''
@@ -106,7 +107,7 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
 
 
     #Frequency Maps and Power Spectra with Beam
-    if which == 'all' or beam_convolved_maps in which:
+    if which == 'all' or 'beam_convolved_maps' in which:
         beam_convolved_maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
         for freq in range(3):
             if not pol:
@@ -160,5 +161,43 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
         plt.grid()
         plt.legend()
         plt.savefig(f'{plot_dir}/CAR_beam_power_spectra.png')
+    
+
+    #Power Spectra of all Components
+    if which == 'all' or 'all_comp_spectra' in which:
+        for i, freq in enumerate([220, 150, 90]):
+            ells = np.arange(ellmax+1)
+            to_dl = ells*(ells+1)/2/np.pi
+            gal_spectra = pickle.load( open(f'{output_dir}/gal_comp_spectra_{freq}.p', 'rb'))
+            extragal_spectra = pickle.load( open(f'{output_dir}/extragal_comp_spectra_{freq}.p', 'rb'))
+            gal_comps = ['Dust', 'Synchrotron', 'AME', 'Free-free']
+            extragal_comps = ['CMB', 'Late-time kSZ', 'tSZ', 'CIB', 'Radio', 'Reionization kSZ']
+            modes = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
+            if not pol:
+                plt.clf()
+                for c in range(len(gal_spectra)):
+                    plt.plot(ells[2:], (to_dl*gal_spectra[c])[2:], label=gal_comps[c])
+                for c in range(len(extragal_spectra)):
+                    plt.plot(ells[2:], (to_dl*extragal_spectra[c])[2:], label=extragal_comps[c])
+                plt.yscale('log')
+                plt.xlabel(r'$\ell$')
+                plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+                plt.grid()
+                plt.legend()
+                plt.savefig(f'{plot_dir}/all_comp_spectra_{freq}.png')
+            else:
+                for m in range(6):
+                    plt.clf()
+                    for c in range(len(gal_spectra)):
+                        plt.plot(ells[2:], (to_dl*gal_spectra[c,m])[2:], label=gal_comps[c])
+                    for c in range(len(extragal_spectra)):
+                        plt.plot(ells[2:], (to_dl*extragal_spectra[c,m])[2:], label=extragal_comps[c])
+                    plt.yscale('log')
+                    plt.xlabel(r'$\ell$')
+                    plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+                    plt.grid()
+                    plt.legend()
+                    plt.savefig(f'{plot_dir}/all_comp_spectra_{freq}_{modes[m]}.png')
+            
 
     return

@@ -8,13 +8,12 @@ from scipy.interpolate import interp1d
 import pickle
 
 
-def get_bandpass_freqs_and_weights(central_freq, passband_file, plot=False):
+def get_bandpass_freqs_and_weights(central_freq, passband_file):
     '''
     ARGUMENTS
     ---------
     central_freq: int or float, central frequency of the passband
     passband_file: str, path to h5 file containing passband information
-    plot: Bool, whether or not to make plot of passbands
     
     RETURNS
     -------
@@ -26,13 +25,10 @@ def get_bandpass_freqs_and_weights(central_freq, passband_file, plot=False):
         
         if central_freq == 220:
             band = f[list(f.keys())[1]] #PA4_220
-            band_name = 'PA4 220'
         elif central_freq == 150:
             band = f[list(f.keys())[3]] #PA5_150
-            band_name = 'PA5 150'
         elif central_freq == 90:
             band = f[list(f.keys())[4]] #PA6_90
-            band_name = 'PA6 90'
         else:
             print(f"No information for frequency {central_freq} GHz")
             return
@@ -42,13 +38,6 @@ def get_bandpass_freqs_and_weights(central_freq, passband_file, plot=False):
         frequencies = band[frequencies_key][()]
         mean_band = band[mean_band_key][()]
         bandpass_weights = mean_band/frequencies**2
-        
-        if plot:
-            plt.plot(frequencies, bandpass_weights/np.amax(bandpass_weights), label=band_name)
-            plt.xlabel('Frequency (GHz)')
-            plt.ylabel('Bandpass Weight')
-            plt.grid()
-            plt.legend()
             
     return frequencies, bandpass_weights
 
@@ -75,19 +64,27 @@ def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, 
     if not pol: returns bandpass integrated temperature (intensity) map only in healpix format
     '''
 
-    total_map = np.zeros((3, 12*nside**2))
-
+    total_map = None
     if output_dir:
         if ellmax is None:
             ellmax = 3*nside-1
-        power_spectra = np.zeros((len(components), ellmax+1))
+        if not pol:
+            power_spectra = np.zeros((len(components), ellmax+1))
+        else:
+            power_spectra = np.zeros((len(components), 6, ellmax+1))
         for c, comp in enumerate(components):
             sky = pysm3.Sky(nside=nside, preset_strings=[comp])
             map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
             if central_freq is None: central_freq = np.mean(bandpass_freqs)
             map_ = map_.to(u.K_CMB, equivalencies=u.cmb_equivalencies(central_freq*u.GHz))
-            total_map += map_
-            power_spectra[c] = hp.anafast(map_[0], lmax=ellmax)
+            if total_map is None:
+                total_map = map_
+            else:
+                total_map += map_
+            if not pol:
+                power_spectra[c] = hp.anafast(map_[0], lmax=ellmax)
+            else:
+                power_spectra[c] = hp.anafast(map_, lmax=ellmax, pol=True)
         pickle.dump(power_spectra, open(f'{output_dir}/gal_comp_spectra_{central_freq}.p', 'wb'))
 
     else:
@@ -142,11 +139,20 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
         freqs = [220, 150, 90]
         comps = ['lcmbNG', 'lkszNGbahamas80', 'ltszNGbahamas80', 'lcibNG', 'lradNG']
         for freq in freqs:
-            power_spectra = np.zeros((len(comps)+1, ellmax+1)) #CMB, kSZ, tSZ, CIB, radio, reionization kSZ
+            if not pol:
+                power_spectra = np.zeros((len(comps)+1, ellmax+1)) #CMB, kSZ, tSZ, CIB, radio, reionization kSZ
+            else:
+                power_spectra = np.zeros((len(comps)+1, 6, ellmax+1))
             for c, comp in enumerate(comps):
-                cmap = hp.read_map(f'{agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits')
-                power_spectra[c] = hp.anafast(cmap, lmax=ellmax)
-            power_spectra[-1] = ksz_patchy
+                if not pol:
+                    cmap = hp.read_map(f'{agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits')
+                else:
+                    cmap = hp.read_map(f'{agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits', field=[0,1,2])
+                power_spectra[c] = hp.anafast(cmap, lmax=ellmax, pol=pol)
+            if not pol:
+                power_spectra[-1] = ksz_patchy
+            else:
+                power_spectra[-1, 0] = ksz_patchy
             pickle.dump(power_spectra, open(f'{output_dir}/extragal_comp_spectra_{freq}.p', 'wb'))
 
     return np.array([I,Q,U]) if pol else I

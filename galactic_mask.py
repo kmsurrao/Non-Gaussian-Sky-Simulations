@@ -20,28 +20,35 @@ def get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, map1, map2=None, el
     -------
     ell_arr: array of effective ell values for bins
     cl_12: array containing binned mask-deconvolved power spectrum
-        1D if not pol, and if pol, index 0 gives EE spectrum and index 1 gives BB spectrum
+        1D if not pol, 3D if pol (TT, EE, BB)
     ''' 
+
     if ellmax:
         b = nmt.NmtBin.from_lmax_linear(ellmax, ells_per_bin, is_Dell=True)
     else:
         b = nmt.NmtBin.from_nside_linear(nside, ells_per_bin, is_Dell=True)
-    if not pol:
-        f_1 = nmt.NmtField(mask, [map1])
-        if map2:
-            f_2 = nmt.NmtField(mask, [map2])
-        else:
-            f_2 = f_1
+    
+    f_1 = nmt.NmtField(mask, [map1])
+    if map2:
+        f_2 = nmt.NmtField(mask, [map2])
     else:
-        f_1 = nmt.NmtField(mask, map1[1:])
-        if map2:
-            f_2 = nmt.NmtField(mask, map2[1:])
-        else:
-            f_2 = f_1
+        f_2 = f_1
     dl_12 = nmt.compute_full_master(f_1, f_2, b)
     ell_arr = b.get_effective_ells()
     to_dl = ell_arr*(ell_arr+1)/2/np.pi
-    return ell_arr, dl_12/to_dl
+
+    if not pol:
+        return ell_arr, dl_12/to_dl
+    
+    else:
+        f_1_pol = nmt.NmtField(mask, map1[1:])
+        if map2:
+            f_2_pol = nmt.NmtField(mask, map2[1:])
+        else:
+            f_2_pol = f_1_pol
+        dl_12_pol = nmt.compute_full_master(f_1_pol, f_2_pol, b)
+        return ell_arr, np.array([dl_12/to_dl, dl_12_pol[0]/to_dl, dl_12_pol[3]/to_dl])
+    
 
 def plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, maps, mask_file, ellmax, ells_per_bin, pol=False):
     '''
@@ -92,8 +99,9 @@ def plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, maps, ma
         if not pol:
             plt.plot(ell_eff, to_dl*spectra[freq], label=f'{freqs[freq]} GHz')
         else:
-            plt.plot(ell_eff, to_dl*spectra[freq][0], label=f'{freqs[freq]} GHz EE')
-            plt.plot(ell_eff, to_dl*spectra[freq][3], label=f'{freqs[freq]} GHz BB')
+            plt.plot(ell_eff, to_dl*spectra[freq][0], label=f'{freqs[freq]} GHz TT')
+            plt.plot(ell_eff, to_dl*spectra[freq][1], label=f'{freqs[freq]} GHz EE')
+            plt.plot(ell_eff, to_dl*spectra[freq][2], label=f'{freqs[freq]} GHz BB')
     plt.xlabel(r'$\ell$')
     plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
     plt.grid()
@@ -110,10 +118,6 @@ if __name__ == '__main__':
     maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
     mask_file = 'HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
     pol = False
-
-    mask = hp.read_map(mask_file, field=(5)) #90% fsky
-    mask = hp.ud_grade(mask, nside)
-
     ellmax = 10000
     ells_per_bin = 50
 
