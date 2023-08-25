@@ -50,7 +50,7 @@ def get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, map1, map2=None, el
         return ell_arr, np.array([dl_12/to_dl, dl_12_pol[0]/to_dl, dl_12_pol[3]/to_dl])
     
 
-def plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, maps, mask_file, ellmax, ells_per_bin, pol=False):
+def plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, maps, mask_file, ellmax, ells_per_bin, pol=False, save_only=False, plot_only=False):
     '''
     ARGUMENTS
     ---------
@@ -63,24 +63,38 @@ def plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, maps, ma
     mask_file: str, file containing Planck mask data
     ellmax: int, maximum ell for which to compute results
     ells_per_bin: int, number of ells to put in a bin
-    pol: Bool, whether 
+    pol: Bool, whether maps are I,Q,U or just I
+    save_only: Bool, set to True if only want to save spectra but not plot them
+    plot_only: Bool, set to True if only want to plot already save spectra, but not re-compute them
     
     RETURNS
     -------
     None
     ''' 
 
-    mask = hp.read_map(mask_file, field=(5)) #90% fsky
+    mask = hp.read_map(mask_file, field=(3)) #70% fsky
     mask = hp.ud_grade(mask, nside)
 
-    spectra = []
-    for i in range(3):
-        ell_eff, cl = get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, maps[i], map2=None, ellmax=ellmax)
-        spectra.append(cl)
+    if not plot_only:
+        spectra = []
+        for i in range(3):
+            ell_eff, cl = get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, maps[i], map2=None, ellmax=ellmax)
+            spectra.append(cl)
 
-    pickle.dump(spectra, open(f'{output_dir}/mask_deconvolved_spectra.p', 'wb'))
-    pickle.dump(ell_eff, open(f'{output_dir}/ell_eff.p', 'wb'))
+        pickle.dump(spectra, open(f'{output_dir}/mask_deconvolved_spectra.p', 'wb'))
+        pickle.dump(ell_eff, open(f'{output_dir}/ell_eff.p', 'wb'))
+    
+    else:
+        try:
+            spectra = pickle.load(open(f'{output_dir}/mask_deconvolved_spectra.p', 'rb'))
+            ell_eff = pickle.load(open(f'{output_dir}/ell_eff.p', 'rb'))
+        except FileNotFoundError:
+            print('Need to save mask-deconvolved spectra before plotting. Re-run with plot_only=False.')
+            return
 
+    if save_only:
+        return
+    
     #plot
     freqs = [220, 150, 90]
     types = ['I', 'Q', 'U']

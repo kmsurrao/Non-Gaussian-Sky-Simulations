@@ -6,6 +6,7 @@ import pysm3.units as u
 import h5py
 from scipy.interpolate import interp1d
 import pickle
+from galactic_mask import get_mask_deconvolved_spectrum
 
 
 def get_bandpass_freqs_and_weights(central_freq, passband_file):
@@ -42,7 +43,8 @@ def get_bandpass_freqs_and_weights(central_freq, passband_file):
     return frequencies, bandpass_weights
 
 
-def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, bandpass_weights=None, pol=False, ellmax=None, output_dir=None):
+def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, bandpass_weights=None, 
+    pol=False, ellmax=None, output_dir=None, mask_file=None, ells_per_bin=None):
     '''
     ARGUMENTS
     ---------
@@ -57,6 +59,10 @@ def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, 
     ellmax: int, maximum ell for which to compute power spectra of each component
     output_dir: str, directory in which to put power spectrum pickle file, 
                 power spectrum not saved if output_dir is None
+    mask_file: str, file galactic mask, set to None if not computing
+        mask-deconvolved spectra
+    ells_per_bin: int, number of ells per bin for NaMaster mask deconvolution, set to None
+        if not computing mask-deconvolved spectra
     
     RETURNS
     -------
@@ -72,6 +78,9 @@ def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, 
             power_spectra = np.zeros((len(components), ellmax+1))
         else:
             power_spectra = np.zeros((len(components), 6, ellmax+1))
+        if mask_file and ells_per_bin:
+            mask = hp.read_map(mask_file, field=(3)) #70% fsky
+            mask = hp.ud_grade(mask, nside)
         for c, comp in enumerate(components):
             sky = pysm3.Sky(nside=nside, preset_strings=[comp])
             map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
@@ -81,11 +90,20 @@ def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, 
                 total_map = map_
             else:
                 total_map += map_
-            if not pol:
-                power_spectra[c] = hp.anafast(map_[0], lmax=ellmax)
-            else:
-                power_spectra[c] = hp.anafast(map_, lmax=ellmax, pol=True)
+            map_to_use = map_[0] if not pol else map_
+            power_spectra[c] = hp.anafast(map_to_use, lmax=ellmax, pol=pol)
+            if mask_file and ells_per_bin:
+                ell_eff, Cl = get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, map_to_use, ellmax=ellmax, pol=pol)
+                if c==0: #first component
+                    pickle.dump(ell_eff, open(f'{output_dir}/ell_eff.p', 'wb'))
+                    Nbins = len(ell_eff)
+                    if not pol:
+                        deconvolved_spectra = np.zeros((len(components), Nbins))
+                    else:
+                        deconvolved_spectra = np.zeros((len(components), 6, Nbins))
+                deconvolved_spectra[c] = Cl
         pickle.dump(power_spectra, open(f'{output_dir}/gal_comp_spectra_{central_freq}.p', 'wb'))
+        pickle.dump(deconvolved_spectra, open(f'{output_dir}/gal_comp_mask_deconvolved_spectra_{central_freq}.p', 'wb'))
 
     else:
         sky = pysm3.Sky(nside=nside, preset_strings=components)
@@ -95,7 +113,10 @@ def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, 
 
     return total_map if pol else total_map[0]
 
-def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reionization_file=None, pol=False, output_dir=None):
+
+
+def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reionization_file=None, pol=False, 
+    output_dir=None, mask_file=None, ells_per_bin=None):
     '''
     ARGUMENTS
     ---------
@@ -107,6 +128,10 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
     pol: Bool, returns [I,Q,U] if true, otherwise just I
     output_dir: str, directory in which to put power spectrum pickle file, 
             power spectrum not saved if output_dir is None
+    mask_file: str, file galactic mask, set to None if not computing
+        mask-deconvolved spectra
+    ells_per_bin: int, number of ells per bin for NaMaster mask deconvolution, set to None
+        if not computing mask-deconvolved spectra
     
     RETURNS
     -------
@@ -126,7 +151,6 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
 
     if ksz_reionization_file is not None:
         ells_ksz_patchy, ksz_patchy = np.transpose(np.loadtxt(ksz_reionization_file))
-        ksz_patchy *= 10**(-12) #convert from uK^2 to K^2
         f = interp1d(ells_ksz_patchy, ksz_patchy, fill_value="extrapolate", kind='cubic')
         ells = np.arange(ellmax+1)
         ksz_patchy = f(ells)
@@ -136,23 +160,66 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
         I += ksz_patchy_realization
 
     if output_dir:
-        freqs = [220, 150, 90]
         comps = ['lcmbNG', 'lkszNGbahamas80', 'ltszNGbahamas80', 'lcibNG', 'lradNG']
-        for freq in freqs:
+        if not pol:
+            power_spectra = np.zeros((len(comps)+1, ellmax+1)) #CMB, kSZ, tSZ, CIB, radio, reionization kSZ
+        else:
+            power_spectra = np.zeros((len(comps)+1, 6, ellmax+1))
+        if mask_file and ells_per_bin:
+            mask = hp.read_map(mask_file, field=(3)) #70% fsky
+            mask = hp.ud_grade(mask, nside)
+        for c, comp in enumerate(comps):
             if not pol:
-                power_spectra = np.zeros((len(comps)+1, ellmax+1)) #CMB, kSZ, tSZ, CIB, radio, reionization kSZ
+                cmap = 10**(-6)*hp.read_map(f'{agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits')
             else:
-                power_spectra = np.zeros((len(comps)+1, 6, ellmax+1))
-            for c, comp in enumerate(comps):
-                if not pol:
-                    cmap = hp.read_map(f'{agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits')
-                else:
-                    cmap = hp.read_map(f'{agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits', field=[0,1,2])
-                power_spectra[c] = hp.anafast(cmap, lmax=ellmax, pol=pol)
-            if not pol:
-                power_spectra[-1] = ksz_patchy
-            else:
-                power_spectra[-1, 0] = ksz_patchy
-            pickle.dump(power_spectra, open(f'{output_dir}/extragal_comp_spectra_{freq}.p', 'wb'))
+                cmap = 10**(-6)*hp.read_map(f'{agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits', field=[0,1,2])
+            power_spectra[c] = hp.anafast(cmap, lmax=ellmax, pol=pol)
+            if mask_file and ells_per_bin:
+                ell_eff, Cl = get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, cmap, ellmax=ellmax, pol=pol)
+                if c==0: #first component
+                    pickle.dump(ell_eff, open(f'{output_dir}/ell_eff.p', 'wb'))
+                    Nbins = len(ell_eff)
+                    if not pol:
+                        deconvolved_spectra = np.zeros((len(comps)+1, Nbins))
+                    else:
+                        deconvolved_spectra = np.zeros((len(comps)+1, 6, Nbins))
+                deconvolved_spectra[c] = Cl
+        if not pol:
+            power_spectra[-1] = ksz_patchy
+        else:
+            power_spectra[-1, 0] = ksz_patchy
+        ell_eff, Cl = get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, ksz_patchy_realization, ellmax=ellmax, pol=False)
+        if not pol:
+            deconvolved_spectra[-1] = Cl
+        else:
+            deconvolved_spectra[-1, 0] = Cl
+        pickle.dump(power_spectra, open(f'{output_dir}/extragal_comp_spectra_{freq}.p', 'wb'))
+        pickle.dump(deconvolved_spectra, open(f'{output_dir}/extragal_comp_mask_deconvolved_spectra_{freq}.p', 'wb'))
 
     return np.array([I,Q,U]) if pol else I
+
+
+if __name__=='__main__':
+    nside = 8192
+    ellmax = 10000
+    pol = False
+    galactic_components = ['d10', 's5', 'a1', 'f1'] #pysm predefined galactic component strings
+    base_dir = '/scratch/09334/ksurrao/ACT_sims' #'/scratch/09334/ksurrao/ACT_sims' for Stampede, '.' for terremoto
+    agora_sims_dir = f'{base_dir}/agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
+    ksz_reionization_file = f'{agora_sims_dir}/FBN_kSZ_PS_patchy.txt' #file with columns ell, D_ell (uK^2) of patchy kSZ, set to None if no such file
+    output_dir = f'{base_dir}/outputs_nside{nside}' #directory in which to put outputs (can be full path)
+    
+    all_bandpass_freqs = pickle.load(open(f'{output_dir}/all_bandpass_freqs.p', 'rb'))
+    all_bandpass_weights = pickle.load(open(f'{output_dir}/all_bandpass_weights.p', 'rb'))
+    
+
+    if not pol: #index as all_maps[freq, gal or extragal, pixel], freqs in decreasing order
+        all_maps = np.zeros((3, 2, 12*nside**2))
+    if pol: #index as all_maps[freq, gal or extragal, I/Q/U, pixel], freqs in decreasing order
+        all_maps = np.zeros((3, 2, 3, 12*nside**2))
+    for i, freq in enumerate([220, 150, 90]):
+        print(f'On frequency {freq}', flush=True)
+        all_maps[i,0] = get_galactic_comp_map(galactic_components, nside, all_bandpass_freqs[i], central_freq=freq, bandpass_weights=all_bandpass_weights[i], pol=pol, ellmax=ellmax, output_dir=output_dir)
+        all_maps[i,1] = get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reionization_file=ksz_reionization_file, pol=pol, output_dir=output_dir)
+    pickle.dump(all_maps, open(f'{output_dir}/gal_and_extragal_before_beam.p', 'wb'))
+    print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)

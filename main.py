@@ -9,8 +9,8 @@ from beams import apply_beam, healpix2CAR
 from make_plots import plot_outputs
 from galactic_mask import get_mask_deconvolved_spectrum, plot_and_save_mask_deconvolved_spectra
 
-def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=False, 
-        ksz_reionization_file=None, save_intermediate=False, verbose=False, output_dir='outputs'):
+def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=False, ells_per_bin=None, 
+        mask_file=None, ksz_reionization_file=None, save_intermediate=False, verbose=False, output_dir='outputs'):
     '''
     ARGUMENTS
     ---------
@@ -21,7 +21,12 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
     agora_sims_dir: str, directory containing agora extragalactic sims with ACT passbands
     beam_dir: str, directory containing beam files
     pol: Bool, False if only computing intensity maps, True if computing E-mode maps
-    ksz_reionization_file: str, file containing Cl for reionization kSZ
+    ells_per_bin: int, number of ells per bin for NaMaster mask deconvolution, set to None
+        if not computing mask-deconvolved spectra
+    mask_file: str, file galactic mask, set to None if not computing
+        mask-deconvolved spectra
+    ksz_reionization_file: str, file containing Cl for reionization kSZ, set to None if 
+        not adding reionization kSZ
     save_intermediate: Bool, whether to save maps at intermediate steps
     output_dir: str, directory in which to put output files if save_intermediate is True
     
@@ -59,8 +64,12 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
         all_maps = np.zeros((3, 2, 3, 12*nside**2))
     for i, freq in enumerate([220, 150, 90]):
         output_dir_here = output_dir if save_intermediate else None
-        all_maps[i,0] = get_galactic_comp_map(galactic_components, nside, all_bandpass_freqs[i], central_freq=None, bandpass_weights=all_bandpass_weights[i], pol=pol, ellmax=ellmax, output_dir=output_dir_here)
-        all_maps[i,1] = get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reionization_file=ksz_reionization_file, pol=pol, output_dir=output_dir_here)
+        all_maps[i,0] = get_galactic_comp_map(galactic_components, nside, all_bandpass_freqs[i], central_freq=freq, 
+                                            bandpass_weights=all_bandpass_weights[i], pol=pol, ellmax=ellmax, 
+                                            output_dir=output_dir_here, mask_file=mask_file, ells_per_bin=ells_per_bin)
+        all_maps[i,1] = get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, 
+                                            ksz_reionization_file=ksz_reionization_file, pol=pol, 
+                                            output_dir=output_dir_here, mask_file=mask_file, ells_per_bin=ells_per_bin)
     if save_intermediate:
         pickle.dump(all_maps, open(f'{output_dir}/gal_and_extragal_before_beam.p', 'wb'))
     if verbose:
@@ -85,6 +94,10 @@ def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam
         pickle.dump(beam_convolved_maps, open(f'{output_dir}/beam_convolved_maps.p', 'wb'))
     if verbose:
         print('Got beam-convolved maps', flush=True)
+    
+    # save mask-deconvolved spectra using 70% fsky galactic mask (do not plot yet)
+    if mask_file and ells_per_bin:
+        plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, beam_convolved_maps, mask_file, ellmax, ells_per_bin, pol=pol, save_only=True)
 
 
     # #convert each frequency map from healpix to CAR
@@ -106,25 +119,25 @@ if __name__=='__main__':
     base_dir = '/scratch/09334/ksurrao/ACT_sims' #'/scratch/09334/ksurrao/ACT_sims' for Stampede, '.' for terremoto
     nside = 8192 #nside at which to create maps, ideally 8192
     ellmax = 10000 #maximum ell for which to compute power spectra, ideally 10000
+    ells_per_bin = 50 #number of ells per bin for NaMaster mask deconvolution
     galactic_components = ['d10', 's5', 'a1', 'f1'] #pysm predefined galactic component strings
     pol = False #whether or not to compute E-mode maps
     passband_file = f'{base_dir}/passbands_20220316/AdvACT_Passbands.h5' #file containing ACT passband information
     agora_sims_dir = f'{base_dir}/agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
     ksz_reionization_file = f'{agora_sims_dir}/FBN_kSZ_PS_patchy.txt' #file with columns ell, D_ell (uK^2) of patchy kSZ, set to None if no such file
+    mask_file = f'{base_dir}/HFI_Mask_GalPlane-apo5_2048_R2.00.fits' #file containing Planck galactic masks
     beam_dir = f'{base_dir}/beams', #/global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
     output_dir = f'{base_dir}/outputs_nside{nside}' #directory in which to put outputs (can be full path)
     plot = True #whether to produce plots
     plot_dir = f'{base_dir}/plots_nside{nside}' #only needs to be defined if plot==True
     plots_to_make = ['passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 'beam_convolved_maps', 'all_comp_spectra'] #only needs to be defined if plot==True
 
-    main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=pol, 
-        ksz_reionization_file=ksz_reionization_file, save_intermediate=True, verbose=True, output_dir=output_dir)
+    main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, ells_per_bin=ells_per_bin, pol=pol, 
+        mask_file=mask_file, ksz_reionization_file=ksz_reionization_file, save_intermediate=True, verbose=True, output_dir=output_dir)
     
     if plot:
         plot_outputs(output_dir, plot_dir, ellmax, pol, which=plots_to_make)
+        beam_convolved_maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
+        if mask_file and ells_per_bin:
+            plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, beam_convolved_maps, mask_file, ellmax, ells_per_bin, pol=pol, plot_only=True)
     
-    # #plot and save mask-deconvolved spectra using 70% fsky galactic mask
-    # ells_per_bin = 50
-    # beam_convolved_maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
-    # mask_file = f'{base_dir}/HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
-    # plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, beam_convolved_maps, mask_file, ellmax, ells_per_bin, pol=pol)
