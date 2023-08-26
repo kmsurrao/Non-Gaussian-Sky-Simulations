@@ -103,7 +103,8 @@ def get_galactic_comp_map(components, nside, bandpass_freqs, central_freq=None, 
                         deconvolved_spectra = np.zeros((len(components), 6, Nbins))
                 deconvolved_spectra[c] = Cl
         pickle.dump(power_spectra, open(f'{output_dir}/gal_comp_spectra_{central_freq}.p', 'wb'))
-        pickle.dump(deconvolved_spectra, open(f'{output_dir}/gal_comp_mask_deconvolved_spectra_{central_freq}.p', 'wb'))
+        if mask_file and ells_per_bin:
+            pickle.dump(deconvolved_spectra, open(f'{output_dir}/gal_comp_mask_deconvolved_spectra_{central_freq}.p', 'wb'))
 
     else:
         sky = pysm3.Sky(nside=nside, preset_strings=components)
@@ -188,13 +189,15 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
             power_spectra[-1] = ksz_patchy
         else:
             power_spectra[-1, 0] = ksz_patchy
-        ell_eff, Cl = get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, ksz_patchy_realization, ellmax=ellmax, pol=False)
-        if not pol:
-            deconvolved_spectra[-1] = Cl
-        else:
-            deconvolved_spectra[-1, 0] = Cl
+        if mask_file and ells_per_bin:
+            ell_eff, Cl = get_mask_deconvolved_spectrum(nside, mask, ells_per_bin, ksz_patchy_realization, ellmax=ellmax, pol=False)
+            if not pol:
+                deconvolved_spectra[-1] = Cl
+            else:
+                deconvolved_spectra[-1, 0] = Cl
+            pickle.dump(deconvolved_spectra, open(f'{output_dir}/extragal_comp_mask_deconvolved_spectra_{freq}.p', 'wb'))
         pickle.dump(power_spectra, open(f'{output_dir}/extragal_comp_spectra_{freq}.p', 'wb'))
-        pickle.dump(deconvolved_spectra, open(f'{output_dir}/extragal_comp_mask_deconvolved_spectra_{freq}.p', 'wb'))
+       
 
     return np.array([I,Q,U]) if pol else I
 
@@ -202,11 +205,13 @@ def get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reioniza
 if __name__=='__main__':
     nside = 8192
     ellmax = 10000
+    ells_per_bin = 50 #number of ells per bin for NaMaster mask deconvolution
     pol = False
     galactic_components = ['d10', 's5', 'a1', 'f1'] #pysm predefined galactic component strings
     base_dir = '/scratch/09334/ksurrao/ACT_sims' #'/scratch/09334/ksurrao/ACT_sims' for Stampede, '.' for terremoto
     agora_sims_dir = f'{base_dir}/agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
     ksz_reionization_file = f'{agora_sims_dir}/FBN_kSZ_PS_patchy.txt' #file with columns ell, D_ell (uK^2) of patchy kSZ, set to None if no such file
+    mask_file = f'{base_dir}/HFI_Mask_GalPlane-apo5_2048_R2.00.fits' #file containing Planck galactic masks
     output_dir = f'{base_dir}/outputs_nside{nside}' #directory in which to put outputs (can be full path)
     
     all_bandpass_freqs = pickle.load(open(f'{output_dir}/all_bandpass_freqs.p', 'rb'))
@@ -219,7 +224,11 @@ if __name__=='__main__':
         all_maps = np.zeros((3, 2, 3, 12*nside**2))
     for i, freq in enumerate([220, 150, 90]):
         print(f'On frequency {freq}', flush=True)
-        all_maps[i,0] = get_galactic_comp_map(galactic_components, nside, all_bandpass_freqs[i], central_freq=freq, bandpass_weights=all_bandpass_weights[i], pol=pol, ellmax=ellmax, output_dir=output_dir)
-        all_maps[i,1] = get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, ksz_reionization_file=ksz_reionization_file, pol=pol, output_dir=output_dir)
+        all_maps[i,0] = get_galactic_comp_map(galactic_components, nside, all_bandpass_freqs[i], 
+                    central_freq=freq, bandpass_weights=all_bandpass_weights[i], pol=pol, 
+                    ellmax=ellmax, output_dir=output_dir, mask_file=mask_file, ells_per_bin=ells_per_bin)
+        all_maps[i,1] = get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, 
+                    ksz_reionization_file=ksz_reionization_file, pol=pol, output_dir=output_dir,
+                    mask_file=mask_file, ells_per_bin=ells_per_bin)
     pickle.dump(all_maps, open(f'{output_dir}/gal_and_extragal_before_beam.p', 'wb'))
     print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
