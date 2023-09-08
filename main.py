@@ -3,141 +3,127 @@ import matplotlib.pyplot as plt
 import os
 import subprocess
 import pickle
+import argparse
 from pixell import enmap
-from bandpass_integration import get_bandpass_freqs_and_weights, get_galactic_comp_map, get_extragalactic_comp_map
-from beams import apply_beam, healpix2CAR
+import pymaster as nmt
+import healpy as hp
+from input import Info
+from bandpass_integration import get_bandpass_freqs_and_weights, get_galactic_comp_maps, get_extragalactic_comp_maps
+from beams import apply_beam 
+from reprojection import healpix2CAR
 from make_plots import plot_outputs
-from galactic_mask import get_mask_deconvolved_spectrum, plot_and_save_mask_deconvolved_spectra
+from galactic_mask import plot_and_save_mask_deconvolved_spectra
 
-def main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, pol=False, ells_per_bin=None, 
-        mask_file=None, ksz_reionization_file=None, save_intermediate=False, verbose=False, output_dir='outputs'):
+def main(inp):
     '''
     ARGUMENTS
     ---------
-    nside: int, resolution parameter for maps
-    ellmax: int, maximum ell for which to compute power spectra
-    galactic_components: list of preset strings for pysm components
-    passband_file: str, path to h5 file containing passband information
-    agora_sims_dir: str, directory containing agora extragalactic sims with ACT passbands
-    beam_dir: str, directory containing beam files
-    pol: Bool, False if only computing intensity maps, True if computing E-mode maps
-    ells_per_bin: int, number of ells per bin for NaMaster mask deconvolution, set to None
-        if not computing mask-deconvolved spectra
-    mask_file: str, file galactic mask, set to None if not computing
-        mask-deconvolved spectra
-    ksz_reionization_file: str, file containing Cl for reionization kSZ, set to None if 
-        not adding reionization kSZ
-    save_intermediate: Bool, whether to save maps at intermediate steps
-    output_dir: str, directory in which to put output files if save_intermediate is True
+    inp: Info object containing input specifications
     
-
     RETURNS
     -------
     car_maps: list of CAR maps at frequencies 220, 150, and 90 GHz. If pol, each 
             map contains [I,Q,U], otherwise just I
     '''
 
-    #set up output directory if save_intermediate is True
-    if save_intermediate and not os.path.isdir(output_dir):
+
+    # set up output directory
+    if not os.path.isdir(inp.output_dir):
         env = os.environ.copy()
-        subprocess.call(f'mkdir {output_dir}', shell=True, env=env)
+        subprocess.call(f'mkdir {inp.output_dir}', shell=True, env=env)
 
 
-    #get bandpass frequencies and weights
+    # get bandpass frequencies and weights
     all_bandpass_freqs = []
     all_bandpass_weights = []
     for central_freq in [220, 150, 90]:
-        bandpass_freqs, bandpass_weights = get_bandpass_freqs_and_weights(central_freq, passband_file)
+        bandpass_freqs, bandpass_weights = get_bandpass_freqs_and_weights(central_freq, inp.passband_file)
         all_bandpass_freqs.append(bandpass_freqs)
         all_bandpass_weights.append(bandpass_weights)
-    if save_intermediate:
-        pickle.dump(all_bandpass_freqs, open(f'{output_dir}/all_bandpass_freqs.p', 'wb'))
-        pickle.dump(all_bandpass_weights, open(f'{output_dir}/all_bandpass_weights.p', 'wb'))
-    if verbose:
-        print('Got passbands', flush=True)
+    pickle.dump(all_bandpass_freqs, open(f'{inp.output_dir}/all_bandpass_freqs.p', 'wb'))
+    pickle.dump(all_bandpass_weights, open(f'{inp.utput_dir}/all_bandpass_weights.p', 'wb'))
+    print('Got passbands', flush=True)
+    
+
+    # create NaMaster workspace object if computing mask-deconvolved spectra
+    if inp.mask_file and inp.ells_per_bin:
+        inp.wsp = nmt.NmtWorkspace()
+        inp.b = nmt.NmtBin.from_lmax_linear(inp.ellmax, inp.ells_per_bin, is_Dell=True)
+        mask = hp.read_map(inp.mask_file, field=(3)) #70% fsky
+        mask = hp.ud_grade(mask, inp.nside)
+        f_tmp = nmt.NmtField(mask, [np.ones_like(mask)])
+        inp.wsp.compute_coupling_matrix(f_tmp, f_tmp, inp.b)
+        print('Computed coupling matrix for mask deconvolution', flush=True)
 
 
     #get galactic and extragalactic component maps
-    if not pol: #index as all_maps[freq, gal or extragal, pixel], freqs in decreasing order
-        all_maps = np.zeros((3, 2, 12*nside**2))
-    if pol: #index as all_maps[freq, gal or extragal, I/Q/U, pixel], freqs in decreasing order
-        all_maps = np.zeros((3, 2, 3, 12*nside**2))
+    num_extragal_comps = 5
+    if inp.ksz_reionization_file is not None:
+        num_extragal_comps += 1
+    if not inp.pol: #index as all_maps[freq, comp, pixel], freqs in decreasing order
+        all_maps = np.zeros((3, len(inp.galactic_components)+num_extragal_comps, 12*inp.nside**2))
+    if inp.pol: #index as all_maps[freq, comp, I/Q/U, pixel], freqs in decreasing order
+        all_maps = np.zeros((3, len(inp.galactic_components)+num_extragal_comps, 3, 12*inp.nside**2))
     for i, freq in enumerate([220, 150, 90]):
-        output_dir_here = output_dir if save_intermediate else None
-        all_maps[i,0] = get_galactic_comp_map(galactic_components, nside, all_bandpass_freqs[i], central_freq=freq, 
-                                            bandpass_weights=all_bandpass_weights[i], pol=pol, ellmax=ellmax, 
-                                            output_dir=output_dir_here, mask_file=mask_file, ells_per_bin=ells_per_bin)
-        all_maps[i,1] = get_extragalactic_comp_map(freq, nside, ellmax, agora_sims_dir, 
-                                            ksz_reionization_file=ksz_reionization_file, pol=pol, 
-                                            output_dir=output_dir_here, mask_file=mask_file, ells_per_bin=ells_per_bin)
-    if save_intermediate:
-        pickle.dump(all_maps, open(f'{output_dir}/gal_and_extragal_before_beam.p', 'wb'))
-    if verbose:
-        print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
+        all_maps[i,:len(inp.galactic_components)] = get_galactic_comp_maps(inp, all_bandpass_freqs[i], central_freq=freq, 
+                                        bandpass_weights=all_bandpass_weights[i], plot_hist=(True if inp.plot_dir else False))
+        all_maps[i,len(inp.galactic_components):] = get_extragalactic_comp_maps(inp, freq)
+    pickle.dump(all_maps, open(f'{inp.output_dir}/gal_and_extragal_before_beam.p', 'wb'))
+    print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
     
 
-    #get beam-convolved healpix maps at each frequency
+    # get beam-convolved healpix maps at each frequency
     freq_maps = np.sum(all_maps, axis=1) #shape Nfreqs, 1 if not pol or 3 if pol, Npix
-    if not pol: #index as all_maps[freq, pixel], freqs in decreasing order
-        beam_convolved_maps = np.zeros((3, 12*nside**2))
-    if pol: #index as all_maps[freq, I/Q/U, pixel], freqs in decreasing order
-        beam_convolved_maps = np.zeros((3, 3, 12*nside**2))
+    if not inp.pol: #index as all_maps[freq, pixel], freqs in decreasing order
+        beam_convolved_maps = np.zeros((3, 12*inp.nside**2))
+    if inp.pol: #index as all_maps[freq, I/Q/U, pixel], freqs in decreasing order
+        beam_convolved_maps = np.zeros((3, 3, 12*inp.nside**2))
     for freq in range(3):
         if freq==0:
-            beamfile = f'{beam_dir}/coadd_pa4_f220_night_beam_tform_jitter_cmb.txt'
+            beamfile = f'{inp.beam_dir}/coadd_pa4_f220_night_beam_tform_jitter_cmb.txt'
         elif freq==1:
-            beamfile = f'{beam_dir}/coadd_pa5_f150_night_beam_tform_jitter_cmb.txt'
+            beamfile = f'{inp.beam_dir}/coadd_pa5_f150_night_beam_tform_jitter_cmb.txt'
         elif freq==2:
-            beamfile = f'{beam_dir}/coadd_pa6_f090_night_beam_tform_jitter_cmb.txt'
-        beam_convolved_maps[freq] = apply_beam(freq_maps[freq], beamfile, pol)
-    if save_intermediate:
-        pickle.dump(beam_convolved_maps, open(f'{output_dir}/beam_convolved_maps.p', 'wb'))
-    if verbose:
-        print('Got beam-convolved maps', flush=True)
+            beamfile = f'{inp.beam_dir}/coadd_pa6_f090_night_beam_tform_jitter_cmb.txt'
+        beam_convolved_maps[freq] = apply_beam(freq_maps[freq], beamfile, inp.pol)
+    pickle.dump(beam_convolved_maps, open(f'{inp.output_dir}/beam_convolved_maps.p', 'wb'))
+    print('Got beam-convolved maps', flush=True)
     
     # save mask-deconvolved spectra using 70% fsky galactic mask (do not plot yet)
-    if mask_file and ells_per_bin:
-        plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, beam_convolved_maps, mask_file, ellmax, ells_per_bin, pol=pol, save_only=True)
+    if inp.mask_file and inp.ells_per_bin:
+        plot_and_save_mask_deconvolved_spectra(inp, beam_convolved_maps, save_only=True)
 
 
-    # #convert each frequency map from healpix to CAR
-    # car_maps = []
-    # freqs = [220, 150, 90]
-    # for freq in range(3):
-    #     car_map = healpix2CAR(beam_convolved_maps[freq], ellmax, pol)
-    #     car_maps.append(car_map)
-    #     enmap.write_map(f'sim_{freqs[freq]}GHz', car_map)
-    # if verbose:
-    #     print('Got CAR maps', flush=True)
+    # convert each frequency map from healpix to CAR
+    car_maps = []
+    freqs = [220, 150, 90]
+    for freq in range(3):
+        car_map = healpix2CAR(inp, beam_convolved_maps[freq])
+        car_maps.append(car_map)
+        enmap.write_map(f'sim_{freqs[freq]}GHz', car_map)
+    print('Got CAR maps', flush=True)
 
-    # return car_maps
+    return car_maps
 
 
 if __name__=='__main__':
 
-    ##### DEFINITIONS AND FILE PATHS, MODIFY HERE #####
-    base_dir = '/scratch/09334/ksurrao/ACT_sims' #'/scratch/09334/ksurrao/ACT_sims' for Stampede, '.' for terremoto
-    nside = 8192 #nside at which to create maps, ideally 8192
-    ellmax = 10000 #maximum ell for which to compute power spectra, ideally 10000
-    ells_per_bin = 50 #number of ells per bin for NaMaster mask deconvolution
-    galactic_components = ['d10', 's5', 'a1', 'f1'] #pysm predefined galactic component strings
-    pol = False #whether or not to compute E-mode maps
-    passband_file = f'{base_dir}/passbands_20220316/AdvACT_Passbands.h5' #file containing ACT passband information
-    agora_sims_dir = f'{base_dir}/agora' #directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims on NERSC
-    ksz_reionization_file = f'{agora_sims_dir}/FBN_kSZ_PS_patchy.txt' #file with columns ell, D_ell (uK^2) of patchy kSZ, set to None if no such file
-    mask_file = f'{base_dir}/HFI_Mask_GalPlane-apo5_2048_R2.00.fits' #file containing Planck galactic masks
-    beam_dir = f'{base_dir}/beams', #/global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
-    output_dir = f'{base_dir}/outputs_nside{nside}' #directory in which to put outputs (can be full path)
-    plot = True #whether to produce plots
-    plot_dir = f'{base_dir}/plots_nside{nside}' #only needs to be defined if plot==True
-    plots_to_make = ['passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 'beam_convolved_maps', 'all_comp_spectra'] #only needs to be defined if plot==True
+    # main input file containing most specifications 
+    parser = argparse.ArgumentParser(description="Non-gaussian full sky simulations.")
+    parser.add_argument("--config", default="example_yaml_files/stampede.yaml")
+    args = parser.parse_args()
+    input_file = args.config
 
-    main(nside, ellmax, galactic_components, passband_file, agora_sims_dir, beam_dir, ells_per_bin=ells_per_bin, pol=pol, 
-        mask_file=mask_file, ksz_reionization_file=ksz_reionization_file, save_intermediate=True, verbose=True, output_dir=output_dir)
+    # read in the input file and set up relevant info object
+    inp = Info(input_file)
+
+    main(inp)
     
-    if plot:
-        plot_outputs(output_dir, plot_dir, ellmax, pol, which=plots_to_make)
-        beam_convolved_maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
-        if mask_file and ells_per_bin:
-            plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, beam_convolved_maps, mask_file, ellmax, ells_per_bin, pol=pol, plot_only=True)
+    if inp.mask_file and inp.ells_per_bin:
+        beam_convolved_maps = pickle.load(open(f'{inp.output_dir}/beam_convolved_maps.p', 'rb'))
+        plot_and_save_mask_deconvolved_spectra(inp, save_only=True)
+
+    
+    if len(inp.plots_to_make) > 0:
+        plot_outputs(inp)
     

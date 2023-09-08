@@ -1,0 +1,54 @@
+# nside (resolution parameter) at which to create HEALPIX maps, ideally 8192
+nside: 8192 
+
+# maximum ell for which to compute power spectra, ideally 10000
+ellmax: 10000
+
+# number of ells per bin for NaMaster mask deconvolution
+# only needs to be defined if computing galactic mask-deconvolved spectra
+ells_per_bin: 50 
+
+# pysm predefined strings for galactic components to include in maps
+galactic_components: ['d10', 's5', 'a1', 'f1'] 
+
+# whether or not to compute polarization maps 
+# set to zero to produce temperature maps only, 
+# set to nonzero value to produce both temperature and polarization maps
+pol: 0
+
+# file containing ACT passband information
+passband_file: '/scratch/09334/ksurrao/ACT_sims/passbands_20220316/AdvACT_Passbands.h5' 
+
+# directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims/outputs on NERSC
+agora_sims_dir: '/scratch/09334/ksurrao/ACT_sims/agora' 
+
+# file with columns ell, D_ell (uK^2) of patchy kSZ, set to 0 or None if no such file
+ksz_reionization_file: '/scratch/09334/ksurrao/ACT_sims/agora/FBN_kSZ_PS_patchy.txt' 
+
+# file containing Planck galactic masks, field 3 is 70% fsky mask and field 5 is 90% fsky
+# only define if computing galactic mask-deconvolved spectra
+mask_file: '/scratch/09334/ksurrao/ACT_sims/HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
+
+# directory containing beam files /global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
+beam_dir: '/scratch/09334/ksurrao/ACT_sims/beams'
+
+# directory in which to put outputs (can be full path)
+output_dir: '/scratch/09334/ksurrao/ACT_sims/outputs_nside8192' 
+
+# directory in which to save plots, only needs to be defined if plotting
+plot_dir: '/scratch/09334/ksurrao/ACT_sims/plots_nside8192' 
+
+# list of strings of which plots to make, leave as empty list if not plotting
+# options are the following:
+  # 'passband': make plots of passbands 
+  # 'gal_and_extragal_comps': plot galactic and extragalactic component maps
+  # 'freq_maps_no_beam': plot healpix frequency maps before applying beam
+  # 'beam_convolved_maps': plot healpix beam-convolved frequency maps
+  # 'CAR_maps': plot CAR beam-convolved frequency maps
+  # 'all_comp_spectra': plot power spectra of all components
+  # 'mask_deconvolved_spectra': compute, save, and plot galactic-mask deconvolved overall spectrum at each frequency
+  # 'mask_deconvolved_comp_spectra': compute, save, and plot galactic-mask deconvolved spectrum of each component
+# can alternatively set to single string 'all' to make all plots
+plots_to_make: ['passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 
+              'beam_convolved_maps', 'all_comp_spectra', 'mask_deconvolved_spectra',
+              'mask_deconvolved_comp_spectra']

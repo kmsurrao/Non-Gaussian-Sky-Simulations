@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 from pixell import enmap, enplot, curvedsky
 import os
 import subprocess
+from galactic_mask import plot_and_save_mask_deconvolved_spectra
 
-def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
+def plot_outputs(output_dir, plot_dir, ellmax, pol, nside, mask_file=None, ells_per_bin=None, plots_to_make='all'):
     '''
     Produces and saves plots of various outputs 
 
@@ -16,14 +17,14 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
     plot_dir: str, directory in which to save plots
     ellmax: int, maximum ell for which to compute power spectra
     pol: Bool, False if only calculting intensity maps, True if also calculating polarization maps
-    which: list of str, which plots to make
+    plots_to_make: list of str, plots_to_make plots to make
         'passband': make plots of passbands 
         'gal_and_extragal_comps': galactic and extragalactic component maps
         'freq_maps_no_beam': healpix frequency maps before applying beam
         'beam_convolved_maps': healpix beam-convolved frequency maps
         'CAR_maps': CAR beam-convolved frequency maps
         'all_comp_spectra': power spectra of all components
-        Alternatively which can be set to a single string 'all' to make all plots.
+        Alternatively plots_to_make can be set to a single string 'all' to make all plots.
 
     '''
 
@@ -33,7 +34,7 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
         subprocess.call(f'mkdir {plot_dir}', shell=True, env=env)
 
     #Passbands
-    if which == 'all' or 'passband' in which:
+    if plots_to_make == 'all' or 'passband' in plots_to_make:
         plt.clf()
         all_bandpass_freqs = pickle.load(open(f'{output_dir}/all_bandpass_freqs.p', 'rb'))
         all_bandpass_weights = pickle.load(open(f'{output_dir}/all_bandpass_weights.p', 'rb'))
@@ -54,7 +55,7 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
 
 
     #Galactic and Extragalactic Component Maps
-    if which == 'all' or 'gal_and_extragal_comps' in which:
+    if plots_to_make == 'all' or 'gal_and_extragal_comps' in plots_to_make:
         all_maps = pickle.load(open(f'{output_dir}/gal_and_extragal_before_beam.p', 'rb'))
         freqs = [220, 150, 90]
         map_types = ['I', 'Q', 'U']
@@ -75,7 +76,7 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
 
 
     #Frequency Maps and Power Spectra without Beam
-    if which == 'all' or 'freq_maps_no_beam' in which:
+    if plots_to_make == 'all' or 'freq_maps_no_beam' in plots_to_make:
         freq_maps = np.sum(all_maps, axis=1)
         for freq in range(3):
             if not pol:
@@ -107,7 +108,7 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
 
 
     #Frequency Maps and Power Spectra with Beam
-    if which == 'all' or 'beam_convolved_maps' in which:
+    if plots_to_make == 'all' or 'beam_convolved_maps' in plots_to_make:
         beam_convolved_maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
         for freq in range(3):
             if not pol:
@@ -136,7 +137,7 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
 
 
     #Final CAR Maps and Power Spectra
-    if which == 'all' or 'CAR_maps' in which:
+    if plots_to_make == 'all' or 'CAR_maps' in plots_to_make:
         def eshow(x,**kwargs): enplot.show(enplot.plot(x,**kwargs))
         for i, freq in enumerate([220, 150, 90]):
             for map_type in range(3):
@@ -164,7 +165,7 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
     
 
     #Power Spectra of all Components
-    if which == 'all' or 'all_comp_spectra' in which:
+    if plots_to_make == 'all' or 'all_comp_spectra' in plots_to_make:
         for i, freq in enumerate([220, 150, 90]):
             ells = np.arange(ellmax+1)
             to_dl = ells*(ells+1)/2/np.pi
@@ -198,6 +199,49 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, which='all'):
                     plt.grid()
                     plt.legend()
                     plt.savefig(f'{plot_dir}/all_comp_spectra_{freq}_{modes[m]}.png')
+    
+    #Galactic Mask-Deconvolved Power Spectrum at Each Frequency
+    if  plots_to_make=='all' or 'mask_deconvolved_spectra' in plots_to_make:
+        beam_convolved_maps = pickle.load(open(f'{output_dir}/beam_convolved_maps.p', 'rb'))
+        plot_and_save_mask_deconvolved_spectra(nside, output_dir, plot_dir, beam_convolved_maps, mask_file, ellmax, ells_per_bin, pol=pol, plot_only=True)
+
+
+
+    #Galactic Mask-Deconvolved Power Spectra of all Components
+    if plots_to_make == 'all' or 'mask_deconvolved_comp_spectra' in plots_to_make:
+        for i, freq in enumerate([220, 150, 90]):
+            ells = np.arange(ellmax+1)
+            to_dl = ells*(ells+1)/2/np.pi
+            gal_spectra = pickle.load( open(f'{output_dir}/gal_comp_mask_deconvolved_spectra_{freq}.p', 'rb'))
+            extragal_spectra = pickle.load( open(f'{output_dir}/extragal_comp_mask_deconvolved_spectra_{freq}.p', 'rb'))
+            gal_comps = ['Dust', 'Synchrotron', 'AME', 'Free-free']
+            extragal_comps = ['CMB', 'Late-time kSZ', 'tSZ', 'CIB', 'Radio', 'Reionization kSZ']
+            modes = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
+            if not pol:
+                plt.clf()
+                for c in range(len(gal_spectra)):
+                    plt.plot(ells[2:], (to_dl*gal_spectra[c])[2:], label=gal_comps[c])
+                for c in range(len(extragal_spectra)):
+                    plt.plot(ells[2:], (to_dl*extragal_spectra[c])[2:], label=extragal_comps[c])
+                plt.yscale('log')
+                plt.xlabel(r'$\ell$')
+                plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+                plt.grid()
+                plt.legend()
+                plt.savefig(f'{plot_dir}/all_comp_spectra_{freq}_mask_deconvolved.png')
+            else:
+                for m in range(6):
+                    plt.clf()
+                    for c in range(len(gal_spectra)):
+                        plt.plot(ells[2:], (to_dl*gal_spectra[c,m])[2:], label=gal_comps[c])
+                    for c in range(len(extragal_spectra)):
+                        plt.plot(ells[2:], (to_dl*extragal_spectra[c,m])[2:], label=extragal_comps[c])
+                    plt.yscale('log')
+                    plt.xlabel(r'$\ell$')
+                    plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+                    plt.grid()
+                    plt.legend()
+                    plt.savefig(f'{plot_dir}/all_comp_spectra_{freq}_{modes[m]}_mask_deconvolved.png')
             
 
     return
