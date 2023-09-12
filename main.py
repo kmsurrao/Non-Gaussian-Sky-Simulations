@@ -31,7 +31,11 @@ def main(inp):
     if not os.path.isdir(inp.output_dir):
         env = os.environ.copy()
         subprocess.call(f'mkdir {inp.output_dir}', shell=True, env=env)
-
+    
+    #Set up output directory for plots
+    if inp.plot_dir and not os.path.isdir(inp.plot_dir):
+        env = os.environ.copy()
+        subprocess.call(f'mkdir {inp.plot_dir}', shell=True, env=env)
 
     # get bandpass frequencies and weights
     all_bandpass_freqs = []
@@ -53,21 +57,27 @@ def main(inp):
         mask = hp.ud_grade(mask, inp.nside)
         f_tmp = nmt.NmtField(mask, [np.ones_like(mask)])
         inp.wsp.compute_coupling_matrix(f_tmp, f_tmp, inp.b)
+        if inp.pol:
+            inp.wsp2 = nmt.NmtWorkspace() #temperature x pol
+            inp.wsp3 = nmt.NmtWorkspace() #pol x pol
+            f_tmp_pol = nmt.NmtField(mask, [np.ones_like(mask), np.ones_like(mask)])
+            inp.wsp2.compute_coupling_matrix(f_tmp, f_tmp_pol, inp.b)
+            inp.wsp3.compute_coupling_matrix(f_tmp_pol, f_tmp_pol, inp.b)
         print('Computed coupling matrix for mask deconvolution', flush=True)
 
 
     #get galactic and extragalactic component maps
-    num_extragal_comps = 5
-    if inp.ksz_reionization_file is not None:
-        num_extragal_comps += 1
-    if not inp.pol: #index as all_maps[freq, comp, pixel], freqs in decreasing order
-        all_maps = np.zeros((3, len(inp.galactic_components)+num_extragal_comps, 12*inp.nside**2))
-    if inp.pol: #index as all_maps[freq, comp, I/Q/U, pixel], freqs in decreasing order
-        all_maps = np.zeros((3, len(inp.galactic_components)+num_extragal_comps, 3, 12*inp.nside**2))
+    #not enough memory to save individual component maps, so save one for all galactic components and one for all extragalactic components
+    if not inp.pol: #index as all_maps[freq, gal or extragal, pixel], freqs in decreasing order
+        all_maps = np.zeros((3, 2, 12*inp.nside**2), dtype=np.float32)
+    else: #index as all_maps[freq, gal or extragal, I/Q/U, pixel], freqs in decreasing order
+        all_maps = np.zeros((3, 2, 3, 12*inp.nside**2), dtype=np.float32)
     for i, freq in enumerate([220, 150, 90]):
-        all_maps[i,:len(inp.galactic_components)] = get_galactic_comp_maps(inp, all_bandpass_freqs[i], central_freq=freq, 
-                                        bandpass_weights=all_bandpass_weights[i], plot_hist=(True if inp.plot_dir else False))
-        all_maps[i,len(inp.galactic_components):] = get_extragalactic_comp_maps(inp, freq)
+        gal_comps = get_galactic_comp_maps(inp, all_bandpass_freqs[i], central_freq=freq, 
+                                        bandpass_weights=all_bandpass_weights[i])
+        extragal_comps = get_extragalactic_comp_maps(inp, freq, plot_hist=(True if inp.plot_dir else False))
+        all_maps[i,0] = np.sum(gal_comps, axis=0)
+        all_maps[i,1] = np.sum(extragal_comps, axis=0)
     pickle.dump(all_maps, open(f'{inp.output_dir}/gal_and_extragal_before_beam.p', 'wb'))
     print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
     
@@ -75,9 +85,9 @@ def main(inp):
     # get beam-convolved healpix maps at each frequency
     freq_maps = np.sum(all_maps, axis=1) #shape Nfreqs, 1 if not pol or 3 if pol, Npix
     if not inp.pol: #index as all_maps[freq, pixel], freqs in decreasing order
-        beam_convolved_maps = np.zeros((3, 12*inp.nside**2))
+        beam_convolved_maps = np.zeros((3, 12*inp.nside**2), dtype=np.float32)
     if inp.pol: #index as all_maps[freq, I/Q/U, pixel], freqs in decreasing order
-        beam_convolved_maps = np.zeros((3, 3, 12*inp.nside**2))
+        beam_convolved_maps = np.zeros((3, 3, 12*inp.nside**2), dtype=np.float32)
     for freq in range(3):
         if freq==0:
             beamfile = f'{inp.beam_dir}/coadd_pa4_f220_night_beam_tform_jitter_cmb.txt'
@@ -118,11 +128,6 @@ if __name__=='__main__':
     inp = Info(input_file)
 
     main(inp)
-    
-    if inp.mask_file and inp.ells_per_bin:
-        beam_convolved_maps = pickle.load(open(f'{inp.output_dir}/beam_convolved_maps.p', 'rb'))
-        plot_and_save_mask_deconvolved_spectra(inp, save_only=True)
-
     
     if len(inp.plots_to_make) > 0:
         plot_outputs(inp)

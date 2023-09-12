@@ -6,7 +6,7 @@ ellmax: 10000
 
 # number of ells per bin for NaMaster mask deconvolution
 # only needs to be defined if computing galactic mask-deconvolved spectra
-ells_per_bin: 50 
+ells_per_bin: 200 
 
 # pysm predefined strings for galactic components to include in maps
 galactic_components: ['d10', 's5', 'a1', 'f1'] 

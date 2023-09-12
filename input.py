@@ -21,7 +21,7 @@ class Info(object):
         p = read_dict_from_yaml(self.input_file)
 
         self.nside = p['nside']
-        assert type(self.nside) is int and (self.nside & (self.nside-1) == 0) and self.n != 0, "nside must be integer power of 2"
+        assert type(self.nside) is int and (self.nside & (self.nside-1) == 0) and self.nside != 0, "nside must be integer power of 2"
         self.ellmax = p['ellmax']
         assert type(self.ellmax) is int and self.ellmax >= 2, "ellmax must be integer >= 2"
         assert self.ellmax <= 3*self.nside-1, "ellmax must be less than 3*nside-1"

@@ -34,72 +34,33 @@ def compute_master(inp, mask, map1, map2=None):
 
     f_a = nmt.NmtField(mask, [map1_T])
     f_b = nmt.NmtField(mask, [map2_T])
-    cl_coupled = nmt.compute_coupled_cell(f_a, f_b)
-    cl_decoupled = inp.wsp.decouple_cell(cl_coupled)
+    dl_coupled = nmt.compute_coupled_cell(f_a, f_b)
+    dl_decoupled = inp.wsp.decouple_cell(dl_coupled)
     
     ell_arr =inp.b.get_effective_ells()
     to_dl = ell_arr*(ell_arr+1)/2/np.pi
+    cl_decoupled = dl_decoupled/to_dl
 
     if not inp.pol:
-        return ell_arr, cl_decoupled/to_dl
+        return ell_arr, cl_decoupled[0]
     
-    f_a_pol = nmt.NmtField(mask, [map1[1:]])
-    f_b_pol = nmt.NmtField(mask, [map2[1:]])
-    cl_coupled_pol = nmt.compute_coupled_cell(f_a_pol, f_b_pol)
-    cl_decoupled_pol = inp.wsp.decouple_cell(cl_coupled_pol)
-    return ell_arr, np.array([cl_decoupled, cl_decoupled_pol[0], cl_decoupled_pol[3]])/to_dl
+    f_a_pol = nmt.NmtField(mask, map1[1:])
+    f_b_pol = nmt.NmtField(mask, map2[1:])
 
+    dl_coupled_tempxpol = nmt.compute_coupled_cell(f_a, f_b_pol)
+    dl_decoupled_tempxpol = inp.wsp2.decouple_cell(dl_coupled_tempxpol)
+    cl_decoupled_tempxpol = dl_decoupled_tempxpol/np.tile(to_dl, (2,1))
 
-def get_mask_deconvolved_spectrum(inp, mask, map1, map2=None):
-    '''
-    Can use this function to compute mask-deconvolved spectrum if only computing
-    it once
+    dl_coupled_pol = nmt.compute_coupled_cell(f_a_pol, f_b_pol)
+    dl_decoupled_pol = inp.wsp3.decouple_cell(dl_coupled_pol)
+    cl_decoupled_pol = dl_decoupled_pol/np.tile(to_dl, (4,1))
 
-    ARGUMENTS
-    ---------
-    inp: Info object containing input parameter specifications
-    mask: 1D numpy array in healpix format containing mask
-    map1: 1D (if not pol) or 3D (if pol) numpy array in healpix format containing map
-    map2: 1D (if not pol) or 3D (if pol) numpy array in healpix format containing map2 (if different from map1)
-    
-    RETURNS
-    -------
-    ell_arr: array of effective ell values for bins
-    cl_12: array containing binned mask-deconvolved power spectrum
-        1D if not pol, 3D if pol (TT, EE, BB)
-    ''' 
+    TT = cl_decoupled[0]
+    EE, EB, BE, BB = cl_decoupled_pol
+    TE, TB = cl_decoupled_tempxpol
 
-    if inp.ellmax:
-        b = nmt.NmtBin.from_lmax_linear(inp.ellmax, inp.ells_per_bin, is_Dell=True)
-    else:
-        b = nmt.NmtBin.from_nside_linear(inp.nside, inp.ells_per_bin, is_Dell=True)
-    
-    if map2 is None:
-        map2 = map1
-    if inp.pol:
-        map1_T, map2_T = map1[0], map2[0]
-    else:
-        map1_T, map2_T = map1, map2
+    return ell_arr, np.array([TT, EE, BB, TE, EB, TB])
 
-    f_1 = nmt.NmtField(mask, [map1_T])
-    f_2 = nmt.NmtField(mask, [map2_T])
-
-    dl_12 = nmt.compute_full_master(f_1, f_2, b)
-    ell_arr = b.get_effective_ells()
-    to_dl = ell_arr*(ell_arr+1)/2/np.pi
-
-    if not inp.pol:
-        return ell_arr, dl_12/to_dl
-    
-    else:
-        f_1_pol = nmt.NmtField(mask, map1[1:])
-        if map2:
-            f_2_pol = nmt.NmtField(mask, map2[1:])
-        else:
-            f_2_pol = f_1_pol
-        dl_12_pol = nmt.compute_full_master(f_1_pol, f_2_pol, b)
-        return ell_arr, np.array([dl_12/to_dl, dl_12_pol[0]/to_dl, dl_12_pol[3]/to_dl])
-    
 
 def plot_and_save_mask_deconvolved_spectra(inp, maps, save_only=False, plot_only=False):
     '''

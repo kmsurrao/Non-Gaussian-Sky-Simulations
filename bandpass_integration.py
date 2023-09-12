@@ -63,21 +63,23 @@ def get_galactic_comp_maps(inp, bandpass_freqs, central_freq=None, bandpass_weig
     all_maps = []
     if inp.ellmax is None:
         ellmax = 3*inp.nside-1
-    if not inp.pol:
-        power_spectra = np.zeros((len(inp.galactic_components), ellmax+1))
     else:
-        power_spectra = np.zeros((len(inp.galactic_components), 6, ellmax+1))
+        ellmax = inp.ellmax
+    if not inp.pol:
+        power_spectra = np.zeros((len(inp.galactic_components), ellmax+1), dtype=np.float32)
+    else:
+        power_spectra = np.zeros((len(inp.galactic_components), 6, ellmax+1), dtype=np.float32) #6 for TT, EE, BB, TE, EB, TE
 
     if inp.mask_file and inp.ells_per_bin:
         mask = hp.read_map(inp.mask_file, field=(3)) #70% fsky
         mask = hp.ud_grade(mask, inp.nside)
 
     for c, comp in enumerate(inp.galactic_components):
-        print(f'Generating pysm bandpass-integrated map for {comp}', flush=True)
-        sky = pysm3.Sky(nside=inp.nside, preset_strings=[comp])
-        map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
         if central_freq is None: 
             central_freq = np.mean(bandpass_freqs)
+        print(f'Generating pysm bandpass-integrated map for {comp}, {central_freq} GHz', flush=True)
+        sky = pysm3.Sky(nside=inp.nside, preset_strings=[comp])
+        map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
         map_ = map_.to(u.K_CMB, equivalencies=u.cmb_equivalencies(central_freq*u.GHz))
         all_maps.append(map_)
         map_to_use = map_[0] if not inp.pol else map_
@@ -88,9 +90,9 @@ def get_galactic_comp_maps(inp, bandpass_freqs, central_freq=None, bandpass_weig
                 pickle.dump(ell_eff, open(f'{inp.output_dir}/ell_eff.p', 'wb'))
                 Nbins = len(ell_eff)
                 if not inp.pol:
-                    deconvolved_spectra = np.zeros((len(inp.galactic_components), Nbins))
+                    deconvolved_spectra = np.zeros((len(inp.galactic_components), Nbins), dtype=np.float32)
                 else:
-                    deconvolved_spectra = np.zeros((len(inp.galactic_components), 6, Nbins))
+                    deconvolved_spectra = np.zeros((len(inp.galactic_components), 6, Nbins), dtype=np.float32) #6 for TT, EE, BB, TE, EB, TE
             deconvolved_spectra[c] = Cl
 
     pickle.dump(power_spectra, open(f'{inp.output_dir}/gal_comp_spectra_{central_freq}.p', 'wb'))
@@ -122,23 +124,25 @@ def get_extragalactic_comp_maps(inp, freq, plot_hist=True):
     all_maps = []
 
     if not inp.pol:
-        power_spectra = np.zeros((len(comps)+1, inp.ellmax+1)) #CMB, kSZ, tSZ, CIB, radio, reionization kSZ
+        power_spectra = np.zeros((len(comps)+1, inp.ellmax+1), dtype=np.float32) #CMB, kSZ, tSZ, CIB, radio, reionization kSZ
     else:
-        power_spectra = np.zeros((len(comps)+1, 6, inp.ellmax+1))
+        power_spectra = np.zeros((len(comps)+1, 6, inp.ellmax+1), dtype=np.float32) #6 for TT, EE, BB, TE, EB, TE
     
     for c, comp in enumerate(comps):
-        print(f'Processing agora map for {comp}', flush=True)
+        print(f'Processing agora map for {comp}, {freq} GHz', flush=True)
 
         if not inp.pol:
             cmap = 10**(-6)*hp.read_map(f'{inp.agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits')
         else:
             cmap = 10**(-6)*hp.read_map(f'{inp.agora_sims_dir}/agora_act_{freq}ghz_{comp}_uk.fits', field=[0,1,2])
+        cmap = hp.ud_grade(cmap, inp.nside)
         
         if comp == 'lcibNG' or comp=='lradNG':
             if not inp.pol:
                 map150 = 10**(-6)*hp.read_map(f'{inp.agora_sims_dir}/agora_act_150ghz_{comp}_uk.fits')
             else:
                 map150 = 10**(-6)*hp.read_map(f'{inp.agora_sims_dir}/agora_act_150ghz_{comp}_uk.fits', field=[0,1,2])
+            map150 = hp.ud_grade(map150, inp.nside)
             if plot_hist:
                 types = ['I', 'Q', 'U']
                 if inp.pol:
@@ -187,7 +191,7 @@ def get_extragalactic_comp_maps(inp, freq, plot_hist=True):
     pickle.dump(power_spectra, open(f'{inp.output_dir}/extragal_comp_spectra_{freq}.p', 'wb'))
     
     all_maps = np.array(all_maps)
-    return all_maps if inp.pol else all_maps[:,0]
+    return all_maps
 
 
 if __name__=='__main__':
@@ -206,9 +210,9 @@ if __name__=='__main__':
     
 
     if not inp.pol: #index as all_maps[freq, gal or extragal, pixel], freqs in decreasing order
-        all_maps = np.zeros((3, 2, 12*inp.nside**2))
+        all_maps = np.zeros((3, 2, 12*inp.nside**2), dtype=np.float32)
     if inp.pol: #index as all_maps[freq, gal or extragal, I/Q/U, pixel], freqs in decreasing order
-        all_maps = np.zeros((3, 2, 3, 12*inp.nside**2))
+        all_maps = np.zeros((3, 2, 3, 12*inp.nside**2), dtype=np.float32)
     for i, freq in enumerate([220, 150, 90]):
         print(f'On frequency {freq}', flush=True)
         all_maps[i,0] = get_galactic_comp_maps(inp, all_bandpass_freqs[i], 

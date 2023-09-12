@@ -13,13 +13,22 @@ def inpaint_map(map_to_inpaint, mask):
     
     RETURNS
     -------
-    inpainted_map: 
+    inpainted_map: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
     '''
     MASK_VAL = -1.e30
-    map_to_inpaint = hp.remove_monopole(map_to_inpaint)
+    if len(map_to_inpaint)==3:
+        for i in range(3):
+            map_to_inpaint[i] = hp.remove_monopole(map_to_inpaint[i])
+    else:
+        map_to_inpaint = hp.remove_monopole(map_to_inpaint)
     map_raw = map_to_inpaint.copy()
     map_raw[np.where(mask == 0.)] = MASK_VAL
-    inpainted_map = diffusive_inpaint.diff_inpaint_vectorized(map_raw, MASK_VAL=MASK_VAL)
+    if len(map_to_inpaint)==3:
+        inpainted_map = np.zeros_like(map_to_inpaint)
+        for i in range(3):
+            inpainted_map[i] = diffusive_inpaint.diff_inpaint_vectorized(map_raw[i], MASK_VAL=MASK_VAL)
+    else:
+        inpainted_map = diffusive_inpaint.diff_inpaint_vectorized(map_raw, MASK_VAL=MASK_VAL)
     return inpainted_map
 
 
@@ -29,9 +38,9 @@ def initial_masking(inp, map_, map_150):
     ---------
     inp: Info object containing input parameter specifications
     map_: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-        should be in Jy/sr. This is the map to inpaint.
+        This is the map to inpaint.
     map_150: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-        should be a 150 GHz map in Jy/sr. This is the map from which to create the flux cut mask.
+        should be a 150 GHz map. This is the map from which to create the flux cut mask.
     
     RETURNS
     -------
@@ -56,15 +65,14 @@ def final_flux_cut(inp, map_, map_150):
     ---------
     inp: Info object containing input parameter specifications
     map_: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-        should be in Jy/sr. This is the map to inpaint.
+        This is the map to inpaint.
     map_150: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-        should be a 150 GHz map in Jy/sr. This is the map from which to create the flux cut mask.
+        This is the map from which to create the flux cut mask.
 
     
     RETURNS
     -------
     inpainted_map: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-        should be in Jy/sr
         A flux cut mask is applied to map_ based on the sources in map_150.
     '''
     return

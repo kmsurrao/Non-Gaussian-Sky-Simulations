@@ -28,11 +28,6 @@ def plot_outputs(output_dir, plot_dir, ellmax, pol, nside, mask_file=None, ells_
 
     '''
 
-    #Set up output directory for plots
-    if not os.path.isdir(plot_dir):
-        env = os.environ.copy()
-        subprocess.call(f'mkdir {plot_dir}', shell=True, env=env)
-
     #Passbands
     if plots_to_make == 'all' or 'passband' in plots_to_make:
         plt.clf()
