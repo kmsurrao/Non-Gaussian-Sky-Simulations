@@ -4,16 +4,12 @@ nside: 8192
 # maximum ell for which to compute power spectra, ideally 10000
 ellmax: 10000
 
-# number of ells per bin for NaMaster mask deconvolution
-# only needs to be defined if computing galactic mask-deconvolved spectra
-ells_per_bin: 200 
-
 # pysm predefined strings for galactic components to include in maps
 galactic_components: ['d10', 's5', 'a1', 'f1'] 
 
 # whether or not to compute polarization maps 
 # set to zero to produce temperature maps only, 
-# set to nonzero value to produce both temperature and polarization maps
+# set to nonzero value to produce both temperature and polarization maps (T,Q,U)
 pol: 0
 
 # file containing ACT passband information
@@ -25,18 +21,32 @@ agora_sims_dir: '/global/cfs/cdirs/act/data/agora_sims/outputs'
 # file with columns ell, D_ell (uK^2) of patchy kSZ, set to 0 if no such file
 ksz_reionization_file: 'FBN_kSZ_PS_patchy.txt' 
 
-# file containing Planck galactic masks, field 3 is 70% fsky mask and field 5 is 90% fsky
-# only define if computing galactic mask-deconvolved spectra
-mask_file: 'HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
-
-# directory containing beam files /global/cfs/cdirs/act/data/adriaand/beams/20230130_beams on NERSC
-beam_dir: '/global/cfs/cdirs/act/data/adriaand/beams/20230130_beams'
+# directory containing beam files /global/cfs/cdirs/act/data/adriaand/beams/20230902_beams on NERSC
+beam_dir: '/global/cfs/cdirs/act/data/adriaand/beams/20230902_beams'
 
 # directory in which to put outputs (can be full path)
 output_dir: 'outputs_nside8192' 
 
 # directory in which to save plots, only needs to be defined if plotting
 plot_dir: 'plots_nside8192' 
+
+# file containing Planck galactic masks, field 3 is 70% fsky mask and field 5 is 90% fsky
+# only define if computing galactic mask-deconvolved spectra
+  # i.e., if 'component_mask_deconvolution' or 'freq_map_mask_deconvolution' in checks list
+mask_file: 'HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
+
+# number of ells per bin for NaMaster mask deconvolution
+# only needs to be defined if computing galactic mask-deconvolved spectra
+  # i.e., if 'component_mask_deconvolution' or 'freq_map_mask_deconvolution' in checks list
+ells_per_bin: 200 
+
+# list of strings of checks to perform, leave as empty list if not performing checks
+# options are the following:
+  # 'component_power_spectra': compute power spectra of individual components
+  # 'component_mask_deconvolution':, compute power spectra of individual galactic mask-deconovolved components
+  # 'freq_map_mask_deconvolution': compute power spectra of galactic mask-deconvolved frequency maps
+checks: ['component_power_spectra', 'component_mask_deconvolution', 
+                      'freq_map_mask_deconvolution']
 
 # list of strings of which plots to make, leave as empty list if not plotting
 # options are the following:
@@ -45,10 +55,11 @@ plot_dir: 'plots_nside8192'
   # 'freq_maps_no_beam': plot healpix frequency maps before applying beam
   # 'beam_convolved_maps': plot healpix beam-convolved frequency maps
   # 'CAR_maps': plot CAR beam-convolved frequency maps
-  # 'all_comp_spectra': plot power spectra of all components
-  # 'mask_deconvolved_spectra': compute, save, and plot galactic-mask deconvolved overall spectrum at each frequency
-  # 'mask_deconvolved_comp_spectra': compute, save, and plot galactic-mask deconvolved spectrum of each galactic component
-# can alternatively set to single string 'all' to make all plots
+  # 'all_comp_spectra': plot power spectra of all components; 'component_power_spectra' must be in checks
+  # 'mask_deconvolved_spectra': compute, save, and plot galactic-mask deconvolved overall spectrum at each frequency; 'freq_map_mask_deconvolution' must be in checks
+  # 'mask_deconvolved_comp_spectra': compute, save, and plot galactic-mask deconvolved spectrum of each component; 'component_mask_deconvolution' must be in checks
+# can alternatively set to single string 'all' to make all plots, in which case
+# 'component_power_spectra', 'component_mask_deconvolution', and 'freq_map_mask_deconvolution' must all be in checks
 plots_to_make: ['passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 
               'beam_convolved_maps', 'all_comp_spectra', 'mask_deconvolved_spectra',
               'mask_deconvolved_comp_spectra']

@@ -130,18 +130,3 @@ def plot_and_save_mask_deconvolved_spectra(inp, maps, save_only=False, plot_only
 
     return
 
-if __name__ == '__main__':
-
-    # main input file containing most specifications 
-    parser = argparse.ArgumentParser(description="Non-gaussian full sky simulations.")
-    parser.add_argument("--config", default="example_yaml_files/stampede.yaml")
-    args = parser.parse_args()
-    input_file = args.config
-
-    # read in the input file and set up relevant info object
-    inp = Info(input_file)
-
-    maps = pickle.load(open(f'{inp.output_dir}/beam_convolved_maps.p', 'rb'))
-    plot_and_save_mask_deconvolved_spectra(inp, maps)
-    
-

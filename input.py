@@ -23,8 +23,9 @@ class Info(object):
         self.nside = p['nside']
         assert type(self.nside) is int and (self.nside & (self.nside-1) == 0) and self.nside != 0, "nside must be integer power of 2"
         self.ellmax = p['ellmax']
-        assert type(self.ellmax) is int and self.ellmax >= 2, "ellmax must be integer >= 2"
-        assert self.ellmax <= 3*self.nside-1, "ellmax must be less than 3*nside-1"
+        if self.ellmax:
+            assert type(self.ellmax) is int and self.ellmax >= 2, "ellmax must be integer >= 2"
+            assert self.ellmax <= 3*self.nside-1, "ellmax must be less than 3*nside-1"
         self.ells_per_bin = p['ells_per_bin']
         if self.ells_per_bin:
             assert type(self.ells_per_bin) is int and 1 <= self.ells_per_bin <= self.ellmax-2, "ells_per_bin must be int with 1 <= ells_per_bin <= ellmax-2"
@@ -54,6 +55,14 @@ class Info(object):
         self.plot_dir = p['plot_dir']
         assert type(self.plot_dir) is str or not self.plot_dir, "TypeError: plot_dir must be str"
 
+        self.checks = p['checks']
+        assert type(self.checks) is list, "TypeError: checks must be a list of strings"
+        if 'component_mask_deconvolution' in self.checks or 'freq_map_mask_deconvolution' in self.checks:
+            assert self.ells_per_bin, "ells_per_bin must be defined if computing mask deconvolved spectra in checks"
+            assert self.mask_file, "mask_file must be defined if computing mask deconvolved spectra in checks"
+        assert set(self.checks).issubset({'component_power_spectra', 'component_mask_deconvolution', 'freq_map_mask_deconvolution'}), \
+                "checks must be a subset of 'component_power_spectra', 'component_mask_deconvolution', 'freq_map_mask_deconvolution'"
+
         self.plots_to_make = p['plots_to_make']
         assert type(self.plots_to_make) is str or type(self.plots_to_make) is list, "TypeError: plots_to_make must be the string 'all' or a list of strings"
         if type(self.plots_to_make) is str:
@@ -66,3 +75,9 @@ class Info(object):
               "plots_to_make must be a subset of 'passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra', 'mask_deconvolved_comp_spectra'"
         if 'mask_deconvolved_spectra' in self.plots_to_make or 'mask_deconvolved_comp_spectra' in self.plots_to_make:
             assert self.ells_per_bin is not None and self.mask_file is not None, "mask_file and ells_per_bin must be defined to plot mask-deconvolved spectra"
+        if self.plots_to_make == 'all' or 'all_comp_spectra' in self.plots_to_make:
+            assert 'component_power_spectra' in self.checks, "component_power_spectra must be in checks in order to plot all_comp_spectra"
+        if self.plots_to_make == 'all' or 'mask_deconvolved_spectra' in self.plots_to_make:
+            assert 'freq_map_mask_deconvolution' in self.checks, "freq_map_mask_deconvolution must be in checks in order to plot mask_deconvolved_spectra"
+        if self.plots_to_make == 'all' or 'mask_deconvolved_comp_spectra' in self.plots_to_make:
+            assert 'component_mask_deconvolution' in self.checks, "component_mask_deconvolution must be in checks in order to plot mask_deconvolved_comp_spectra"

@@ -14,18 +14,22 @@ from reprojection import healpix2CAR
 from make_plots import plot_outputs
 from galactic_mask import plot_and_save_mask_deconvolved_spectra
 
-def main(inp):
+def main():
     '''
-    ARGUMENTS
-    ---------
-    inp: Info object containing input specifications
-    
     RETURNS
     -------
     car_maps: list of CAR maps at frequencies 220, 150, and 90 GHz. If pol, each 
             map contains [I,Q,U], otherwise just I
     '''
 
+    # main input file containing most specifications 
+    parser = argparse.ArgumentParser(description="Non-gaussian full sky simulations.")
+    parser.add_argument("--config", default="example_yaml_files/stampede.yaml")
+    args = parser.parse_args()
+    input_file = args.config
+
+    # read in the input file and set up relevant info object
+    inp = Info(input_file)
 
     # set up output directory
     if not os.path.isdir(inp.output_dir):
@@ -50,7 +54,7 @@ def main(inp):
     
 
     # create NaMaster workspace object if computing mask-deconvolved spectra
-    if inp.mask_file and inp.ells_per_bin:
+    if 'component_mask_deconvolution' in inp.checks or 'freq_map_mask_deconvolution' in inp.checks:
         inp.wsp = nmt.NmtWorkspace()
         inp.b = nmt.NmtBin.from_lmax_linear(inp.ellmax, inp.ells_per_bin, is_Dell=True)
         mask = hp.read_map(inp.mask_file, field=(3)) #70% fsky
@@ -100,7 +104,7 @@ def main(inp):
     print('Got beam-convolved maps', flush=True)
     
     # save mask-deconvolved spectra using 70% fsky galactic mask (do not plot yet)
-    if inp.mask_file and inp.ells_per_bin:
+    if 'freq_map_mask_deconvolution' in inp.checks:
         plot_and_save_mask_deconvolved_spectra(inp, beam_convolved_maps, save_only=True)
 
 
@@ -113,22 +117,14 @@ def main(inp):
         enmap.write_map(f'sim_{freqs[freq]}GHz', car_map)
     print('Got CAR maps', flush=True)
 
+    # make plots
+    if len(inp.plots_to_make) > 0:
+        plot_outputs(inp)
+
+
     return car_maps
 
 
 if __name__=='__main__':
-
-    # main input file containing most specifications 
-    parser = argparse.ArgumentParser(description="Non-gaussian full sky simulations.")
-    parser.add_argument("--config", default="example_yaml_files/stampede.yaml")
-    args = parser.parse_args()
-    input_file = args.config
-
-    # read in the input file and set up relevant info object
-    inp = Info(input_file)
-
-    main(inp)
-    
-    if len(inp.plots_to_make) > 0:
-        plot_outputs(inp)
+    main()
     
