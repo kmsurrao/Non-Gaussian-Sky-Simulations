@@ -1,6 +1,5 @@
 import numpy as np
 import healpy as hp
-import matplotlib.pyplot as plt
 import pysm3
 import pysm3.units as u
 import h5py
@@ -10,6 +9,7 @@ import pickle
 from galactic_mask import compute_master
 from input import Info
 from apply_flux_cut import initial_masking
+from utils import plot_histogram
 
 
 def get_bandpass_freqs_and_weights(central_freq, passband_file):
@@ -56,12 +56,11 @@ def get_galactic_comp_maps(inp, bandpass_freqs, central_freq=None, bandpass_weig
     
     RETURNS
     -------
-    all_maps: ndarray containing bandpass integrated maps of each galactic component in healpix format
-        if pol: all_maps has shape (num_galactic_components, 3 for IQU, Npix)
-        if not pol: all_maps has shape (num_galactic_components, Npix)
+    gal_comps: ndarray containing bandpass integrated map of all galactic components in healpix format
+        if pol: gal_comps has shape (3 for IQU, Npix)
+        if not pol: gal_comps has shape (Npix, )
     '''
 
-    all_maps = []
     if central_freq is None: 
         central_freq = np.mean(bandpass_freqs)
 
@@ -83,7 +82,10 @@ def get_galactic_comp_maps(inp, bandpass_freqs, central_freq=None, bandpass_weig
             sky = pysm3.Sky(nside=inp.nside, preset_strings=[comp])
             map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
             map_ = map_.to(u.K_CMB, equivalencies=u.cmb_equivalencies(central_freq*u.GHz))
-            all_maps.append(map_)
+            if c==0:
+                gal_comps = map_
+            else:
+                gal_comps += map_
             map_to_use = map_[0] if not inp.pol else map_
 
             if 'component_power_spectra' in inp.checks:
@@ -105,15 +107,15 @@ def get_galactic_comp_maps(inp, bandpass_freqs, central_freq=None, bandpass_weig
         if 'component_mask_deconvolution' in inp.checks:
             pickle.dump(deconvolved_spectra, open(f'{inp.output_dir}/gal_comp_mask_deconvolved_spectra_{central_freq}.p', 'wb'))
     
-        all_maps = np.array(all_maps)
-        return all_maps if inp.pol else all_maps[:,0]
+        gal_comps = np.array(gal_comps, dtype=np.float32)
+        return gal_comps if inp.pol else gal_comps[0]
     
     print(f'Generating pysm bandpass-integrated map for all galactic components, {central_freq} GHz', flush=True)
     sky = pysm3.Sky(nside=inp.nside, preset_strings=inp.galactic_components)
     map_ = sky.get_emission(bandpass_freqs*u.GHz, bandpass_weights)
     map_ = map_.to(u.K_CMB, equivalencies=u.cmb_equivalencies(central_freq*u.GHz))
-    all_maps.append(map_)
-    return all_maps if inp.pol else all_maps[:,0]
+    gal_comps = np.array(map_, dtype=np.float32)
+    return gal_comps if inp.pol else gal_comps[0]
 
 
 
@@ -128,13 +130,12 @@ def get_extragalactic_comp_maps(inp, freq, plot_hist=True):
     
     RETURNS
     -------
-    all_maps: ndarray containing bandpass integrated maps of each galactic component in healpix format
-        if pol: all_maps has shape (num_galactic_components, 3 for IQU, Npix)
-        if not pol: all_maps has shape (num_galactic_components, Npix)
+    extragal_comps: ndarray containing bandpass integrated map of all extragalactic components in healpix format
+        if pol: extragal_comps has shape (3 for IQU, Npix)
+        if not pol: extragal_comps has shape (Npix,)
     '''
 
     comps = ['lcmbNG', 'lkszNGbahamas80', 'ltszNGbahamas80', 'lcibNG', 'lradNG']
-    all_maps = []
 
     if 'component_power_spectra' in inp.checks:
         if not inp.pol:
@@ -158,12 +159,15 @@ def get_extragalactic_comp_maps(inp, freq, plot_hist=True):
                 map150 = 10**(-6)*hp.read_map(f'{inp.agora_sims_dir}/agora_act_150ghz_{comp}_uk.fits', field=[0,1,2])
             map150 = hp.ud_grade(map150, inp.nside)
             if plot_hist:
-                plot_hist(inp, cmap, freq, comp)
+                plot_histogram(inp, cmap, freq, comp)
             cmap = initial_masking(inp, cmap, map150)
             if plot_hist:
-                plot_hist(inp, cmap, freq, comp)
+                plot_histogram(inp, cmap, freq, comp)
 
-        all_maps.append(cmap)
+        if c==0:
+            extragal_comps = cmap
+        else:
+            extragal_comps += cmap
         if 'component_power_spectra' in inp.checks:
             power_spectra[c] = hp.anafast(cmap, lmax=inp.ellmax, pol=inp.pol)
 
@@ -178,14 +182,14 @@ def get_extragalactic_comp_maps(inp, freq, plot_hist=True):
         if not inp.pol:
             if 'component_power_spectra' in inp.checks:
                 power_spectra[-1] = ksz_patchy
-            all_maps.append(ksz_patchy_realization)
+            extragal_comps += ksz_patchy_realization
         else:
             if 'component_power_spectra' in inp.checks:
                 power_spectra[-1, 0] = ksz_patchy
-            all_maps.append([ksz_patchy_realization, np.zeros_like(ksz_patchy_realization), np.zeros_like(ksz_patchy_realization)])
+            extragal_comps[0] += ksz_patchy_realization
 
     if 'component_power_spectra' in inp.checks:
         pickle.dump(power_spectra, open(f'{inp.output_dir}/extragal_comp_spectra_{freq}.p', 'wb'))
     
-    all_maps = np.array(all_maps)
-    return all_maps
+    extragal_comps = np.array(extragal_comps, dtype=np.float32)
+    return extragal_comps

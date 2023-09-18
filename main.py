@@ -77,12 +77,13 @@ def main():
     else: #index as all_maps[freq, gal or extragal, I/Q/U, pixel], freqs in decreasing order
         all_maps = np.zeros((3, 2, 3, 12*inp.nside**2), dtype=np.float32)
     for i, freq in enumerate([220, 150, 90]):
-        gal_comps = get_galactic_comp_maps(inp, all_bandpass_freqs[i], central_freq=freq, 
+        gal_comps = get_galactic_comp_maps(inp, all_bandpass_freqs[i], central_freq=freq,
                                         bandpass_weights=all_bandpass_weights[i])
         extragal_comps = get_extragalactic_comp_maps(inp, freq, plot_hist=(True if inp.plot_dir else False))
-        all_maps[i,0] = np.sum(gal_comps, axis=0)
-        all_maps[i,1] = np.sum(extragal_comps, axis=0)
-    pickle.dump(all_maps, open(f'{inp.output_dir}/gal_and_extragal_before_beam.p', 'wb'))
+        all_maps[i,0] = gal_comps
+        all_maps[i,1] = extragal_comps
+        plt.close('all')
+    pickle.dump(all_maps, open(f'{inp.output_dir}/gal_and_extragal_before_beam.p', 'wb'), protocol=4)
     print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
     
 
@@ -100,7 +101,7 @@ def main():
         elif freq==2:
             beamfile = f'{inp.beam_dir}/coadd_pa6_f090_night_beam_tform_jitter_cmb.txt'
         beam_convolved_maps[freq] = apply_beam(freq_maps[freq], beamfile, inp.pol)
-    pickle.dump(beam_convolved_maps, open(f'{inp.output_dir}/beam_convolved_maps.p', 'wb'))
+    pickle.dump(beam_convolved_maps, open(f'{inp.output_dir}/beam_convolved_maps.p', 'wb'), protocol=4)
     print('Got beam-convolved maps', flush=True)
     
     # save mask-deconvolved spectra using 70% fsky galactic mask (do not plot yet)

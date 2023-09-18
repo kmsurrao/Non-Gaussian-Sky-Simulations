@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_hist(inp, cmap, freq, comp):
+def plot_histogram(inp, cmap, freq, comp):
     '''
     Plots histogram of pixel values and saves them in inp.plot_dir
 
@@ -20,9 +20,13 @@ def plot_hist(inp, cmap, freq, comp):
     types = ['I', 'Q', 'U']
     for t in range(3):
         plt.clf()
-        plt.hist(cmap[t], density=True, alpha=0.5)
+        if inp.pol:
+            plt.hist(cmap[t], density=True, alpha=0.5)
+        else:
+            plt.hist(cmap, density=True, alpha=0.5)
         plt.yscale('log')
         plt.savefig(f'{inp.plot_dir}/pixel_hist_{freq}ghz_{types[t]}_{comp}_before.png')
+        plt.close()
         if not inp.pol:
             break
     return

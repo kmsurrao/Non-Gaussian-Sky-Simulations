@@ -50,33 +50,16 @@ def initial_masking(inp, map_, map_150):
     '''
     mask = np.ones_like(map_)
     cut_val = JytoK(150, inp.nside)*0.1
-    mask[map_150 >= cut_val] = 0 #mask pixels >= 100 mJy
-    neighbors = hp.pixelfunc.get_all_neighbours(inp.nside, np.where(mask==0)).flatten()
-    mask[neighbors] = 0
+    mask[map_150 >= cut_val] = 0 #mask pixels >= 100 mJy at 150 GHz
+    if not inp.pol:
+        neighbors = hp.pixelfunc.get_all_neighbours(inp.nside, np.where(mask==0)).flatten()
+        mask[neighbors] = 0
+    else:
+        for i in range(3):
+           neighbors = hp.pixelfunc.get_all_neighbours(inp.nside, np.where(mask[i]==0)).flatten() 
+           mask[i][neighbors] = 0
     inpainted_map = inpaint_map(map_, mask)
     return inpainted_map
-
-
-def final_flux_cut(inp, map_, map_150):
-    '''
-    TODO: Implement
-
-    ARGUMENTS
-    ---------
-    inp: Info object containing input parameter specifications
-    map_: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-        This is the map to inpaint.
-    map_150: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-        This is the map from which to create the flux cut mask.
-
-    
-    RETURNS
-    -------
-    inpainted_map: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-        A flux cut mask is applied to map_ based on the sources in map_150.
-    '''
-    return
-
 
 
 

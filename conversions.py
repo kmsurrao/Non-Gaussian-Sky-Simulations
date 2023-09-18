@@ -52,7 +52,7 @@ def JysrtoK(nu_ghz):
     float, conversion factor from Jy/sr to K
     '''
     ItoDeltaT_conversion = ItoDeltaT(nu_ghz)
-    return ItoDeltaT_conversion*1e-26
+    return ItoDeltaT_conversion*1e-26*1e-6
     
 def KtoJysr(nu_ghz):
     '''

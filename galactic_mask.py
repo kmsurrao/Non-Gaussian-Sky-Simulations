@@ -86,7 +86,7 @@ def plot_and_save_mask_deconvolved_spectra(inp, maps, save_only=False, plot_only
         for i in range(3):
             ell_eff, cl = compute_master(inp, mask, maps[i], map2=None)
             spectra.append(cl)
-
+        spectra = np.array(spectra, dtype=np.float32)
         pickle.dump(spectra, open(f'{inp.output_dir}/mask_deconvolved_spectra.p', 'wb'))
         pickle.dump(ell_eff, open(f'{inp.output_dir}/ell_eff.p', 'wb'))
     
