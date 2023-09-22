@@ -9,8 +9,8 @@ import pymaster as nmt
 import healpy as hp
 from input import Info
 from bandpass_integration import get_bandpass_freqs_and_weights, get_galactic_comp_maps, get_extragalactic_comp_maps
-from beams import apply_beam 
-from reprojection import healpix2CAR
+from beams import get_all_beam_convolved_maps
+from reprojection import get_all_CAR_maps
 from make_plots import plot_outputs
 from galactic_mask import plot_and_save_mask_deconvolved_spectra
 
@@ -88,19 +88,7 @@ def main():
     
 
     # get beam-convolved healpix maps at each frequency
-    freq_maps = np.sum(all_maps, axis=1) #shape Nfreqs, 1 if not pol or 3 if pol, Npix
-    if not inp.pol: #index as all_maps[freq, pixel], freqs in decreasing order
-        beam_convolved_maps = np.zeros((3, 12*inp.nside**2), dtype=np.float32)
-    if inp.pol: #index as all_maps[freq, I/Q/U, pixel], freqs in decreasing order
-        beam_convolved_maps = np.zeros((3, 3, 12*inp.nside**2), dtype=np.float32)
-    for freq in range(3):
-        if freq==0:
-            beamfile = f'{inp.beam_dir}/coadd_pa4_f220_night_beam_tform_jitter_cmb.txt'
-        elif freq==1:
-            beamfile = f'{inp.beam_dir}/coadd_pa5_f150_night_beam_tform_jitter_cmb.txt'
-        elif freq==2:
-            beamfile = f'{inp.beam_dir}/coadd_pa6_f090_night_beam_tform_jitter_cmb.txt'
-        beam_convolved_maps[freq] = apply_beam(freq_maps[freq], beamfile, inp.pol)
+    beam_convolved_maps = get_all_beam_convolved_maps(inp, all_maps)
     pickle.dump(beam_convolved_maps, open(f'{inp.output_dir}/beam_convolved_maps.p', 'wb'), protocol=4)
     print('Got beam-convolved maps', flush=True)
     
@@ -110,12 +98,7 @@ def main():
 
 
     # convert each frequency map from healpix to CAR
-    car_maps = []
-    freqs = [220, 150, 90]
-    for freq in range(3):
-        car_map = healpix2CAR(inp, beam_convolved_maps[freq])
-        car_maps.append(car_map)
-        enmap.write_map(f'sim_{freqs[freq]}GHz', car_map)
+    car_maps = get_all_CAR_maps(inp, beam_convolved_maps)
     print('Got CAR maps', flush=True)
 
     # make plots

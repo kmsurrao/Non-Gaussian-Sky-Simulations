@@ -3,8 +3,6 @@ import healpy as hp
 import pickle
 import pymaster as nmt
 import matplotlib.pyplot as plt
-import argparse
-from input import Info
 
 def compute_master(inp, mask, map1, map2=None):
     '''

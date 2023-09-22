@@ -4,10 +4,8 @@ import pysm3
 import pysm3.units as u
 import h5py
 from scipy.interpolate import interp1d
-import argparse
 import pickle
 from galactic_mask import compute_master
-from input import Info
 from apply_flux_cut import initial_masking
 from utils import plot_histogram
 
@@ -159,10 +157,10 @@ def get_extragalactic_comp_maps(inp, freq, plot_hist=True):
                 map150 = 10**(-6)*hp.read_map(f'{inp.agora_sims_dir}/agora_act_150ghz_{comp}_uk.fits', field=[0,1,2])
             map150 = hp.ud_grade(map150, inp.nside)
             if plot_hist:
-                plot_histogram(inp, cmap, freq, comp)
+                plot_histogram(inp, cmap, freq, comp, string='before')
             cmap = initial_masking(inp, cmap, map150)
             if plot_hist:
-                plot_histogram(inp, cmap, freq, comp)
+                plot_histogram(inp, cmap, freq, comp, string='after')
 
         if c==0:
             extragal_comps = cmap

@@ -40,8 +40,8 @@ The following outputs are saved in the output directory listed in the yaml file:
 3. gal_and_extragal_before_beam.p  
     - numpy array containing galactic and extragalactic component maps in healpix format before beam convolution. If generating polarized maps, gal_and_extragal_before_beam has shape (Nfreqs, 2 for gal and extragal, 3 for I/Q/U, Npix), where freqs are indexed in decreasing order. If generating only a temperature map, gal_and_extragal_before_beam has shape (Nfreqs, 2 for gal or extragal, Npix).  
 4. beam_convolved_maps.p  
-    - numpy array containing beam-convolved maps in healpix format. If generating polarized maps, beam_convolved_maps has shape (Nfreqs, 3 for I/Q,U, Npix). Otherwise, has shape (Nfreqs, Npix).  
-5. sim_90GHz, sim_150GHz, sim_220_GHz  
+    - numpy array containing beam-convolved maps in healpix format. If generating polarized maps, beam_convolved_maps has shape (Nfreqs, Nsplits, 3 for I/Q,U, Npix). Otherwise, has shape (Nfreqs, Nsplits, Npix).  
+5. sim_{freq}GHz_split{split}  
     - final CAR maps
 6. (Optional) gal_comp_spectra_{central_freq}.p and extragal_comp_spectra_{central_freq}.p  
     - numpy array containing power spectrum of each galactic component at central_freq. If generating polarized maps, has shape (N_(extra)galactic_comps, 6, $\ell_{\mathrm{max}}$), where 6 is for TT, EE, BB, TE, EB, TE. If only generating temparature maps, has shape (N_(extra)galactic_comps, $\ell_{\mathrm{max}}$).  
