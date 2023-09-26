@@ -38,6 +38,7 @@ def plot_outputs(inp):
         plt.legend()
         plt.savefig(f'{inp.plot_dir}/passbands.png')
         print(f'saved {inp.plot_dir}/passbands.png', flush=True)
+        plt.close('all')
     
 
     #Beams
@@ -68,6 +69,7 @@ def plot_outputs(inp):
         plt.yscale('log')
         plt.savefig(f'{inp.plot_dir}/beams.png')
         print(f'saved {inp.plot_dir}/beams.png', flush=True)
+        plt.close('all')
 
 
     #Galactic and Extragalactic Component Maps
@@ -87,6 +89,7 @@ def plot_outputs(inp):
                     hp.mollview(all_maps[freq,map_type], title=f'{freqs[freq]} GHz {map_types[map_type]} Map')
                     plt.savefig(f'{inp.plot_dir}/{map_types[map_type]}_{freqs[freq]}_before_beam.png')
                     print(f'saved {inp.plot_dir}/{map_types[map_type]}_{freqs[freq]}_before_beam.png', flush=True)
+        plt.close('all')
 
 
     #Frequency Maps and Power Spectra without Beam
@@ -121,6 +124,7 @@ def plot_outputs(inp):
         plt.legend()
         plt.savefig(f'{inp.plot_dir}/no_beam_power_spectra.png')
         print(f'saved {inp.plot_dir}/no_beam_power_spectra.png', flush=True)
+        plt.close('all')
 
 
 
@@ -156,41 +160,44 @@ def plot_outputs(inp):
         plt.legend()
         plt.savefig(f'{inp.plot_dir}/beam_power_spectra.png')
         print(f'saved {inp.plot_dir}/beam_power_spectra.png', flush=True)
+        plt.close('all')
 
 
     #Final CAR Maps and Power Spectra
     if inp.plots_to_make == 'all' or 'CAR_maps' in inp.plots_to_make:
         colors = ['red', 'blue', 'green']
         linestyles = ['solid', 'dashed', 'dotted', 'dashdot']
-        def eshow(x,**kwargs): enplot.show(enplot.plot(x,**kwargs))
         for i, freq in enumerate([220, 150, 90]):
             for split in range(4):
+                map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split{split}')
                 for map_type in range(3):
                     plt.clf()
-                    map_ = enmap.read_map(f'sim_{freq}GHz_split{split}')
-                    eshow(map_)
-                    plt.savefig(f'{inp.plot_dir}/CAR_{map_types[map_type]}map_{freq}_split{split}.png')
-                    print(f'saved {inp.plot_dir}/CAR_{map_types[map_type]}map_{freq}.split{split}', flush=True)
+                    to_plot = enplot.plot(map_[map_type])
+                    enplot.write(f'{inp.plot_dir}/CAR_{map_types[map_type]}map_{freq}_split{split}', to_plot)
+                    print(f'saved {inp.plot_dir}/CAR_{map_types[map_type]}map_{freq}_split{split}', flush=True)
                     if not inp.pol: 
                         break
         plt.clf()
         for i, freq in enumerate([220, 150, 90]):
             for split in range(4):
-                map_ = enmap.read_map(f'sim_{freq}GHz_split{split}')
+                map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split{split}')
                 alm = curvedsky.map2alm(map_, lmax=inp.ellmax)
-                cl = curvedsky.alm2cl(alm)
                 if not inp.pol:
+                    cl = curvedsky.alm2cl(alm)
                     plt.plot(ells, ells*(ells+1)/2/np.pi*cl[0], label=f'{freq} GHz')
                 else:
-                    spectra_types = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
-                    for t in range(6):
-                        plt.plot(ells[2:], (to_dl*cl[t])[2:], label=f'{freqs[freq]} GHz {spectra_types[t]}', color=colors[i], linestyle=linestyles[split])
+                    cl = curvedsky.alm2cl(alm[:,None,:], alm[None,:,:])
+                    spectra_types = ['T', 'E', 'B']
+                    for t1 in range(3):
+                        for t2 in range(3):
+                            plt.plot(ells[2:], (to_dl*cl[t1,t2])[2:], label=f'{freq} GHz {spectra_types[t1]}{spectra_types[t2]}', color=colors[i], linestyle=linestyles[split])
         plt.xlabel(r'$\ell$')
         plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
         plt.grid()
         plt.legend()
         plt.savefig(f'{inp.plot_dir}/CAR_beam_power_spectra.png')
         print(f'saved {inp.plot_dir}/CAR_beam_power_spectra.png', flush=True)
+        plt.close('all')
     
 
     #Power Spectra of all Components
@@ -223,19 +230,22 @@ def plot_outputs(inp):
                         plt.plot(ells[2:], (to_dl*gal_spectra[c,m])[2:], label=gal_comps[c])
                     for c in range(len(extragal_spectra)):
                         plt.plot(ells[2:], (to_dl*extragal_spectra[c,m])[2:], label=extragal_comps[c])
-                    plt.yscale('log')
+                    if m < 3:
+                        plt.yscale('log')
                     plt.xlabel(r'$\ell$')
                     plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
                     plt.grid()
                     plt.legend()
                     plt.savefig(f'{inp.plot_dir}/all_comp_spectra_{freq}_{modes[m]}.png')
                     print(f'saved {inp.plot_dir}/all_comp_spectra_{freq}_{modes[m]}.png', flush=True)
+        plt.close('all')
     
 
     #Galactic Mask-Deconvolved Power Spectrum at Each Frequency
     if  inp.plots_to_make=='all' or 'mask_deconvolved_spectra' in inp.plots_to_make:
         beam_convolved_maps = pickle.load(open(f'{inp.output_dir}/beam_convolved_maps.p', 'rb'))
         plot_and_save_mask_deconvolved_spectra(inp, beam_convolved_maps, plot_only=True)
+        plt.close('all')
 
 
     #Galactic Mask-Deconvolved Power Spectra of Galactic Components
@@ -262,13 +272,15 @@ def plot_outputs(inp):
                     plt.clf()
                     for c in range(len(gal_spectra)):
                         plt.plot(ells[2:], (to_dl*gal_spectra[c,m])[2:], label=gal_comps[c])
-                    plt.yscale('log')
+                    if m < 3:
+                        plt.yscale('log')
                     plt.xlabel(r'$\ell$')
                     plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
                     plt.grid()
                     plt.legend()
                     plt.savefig(f'{inp.plot_dir}/all_comp_spectra_{freq}_{modes[m]}_mask_deconvolved.png')
                     print(f'saved {inp.plot_dir}/all_comp_spectra_{freq}_{modes[m]}_mask_deconvolved.png', flush=True)
+        plt.close('all')
             
 
     return

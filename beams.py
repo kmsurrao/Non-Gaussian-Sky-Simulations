@@ -19,7 +19,7 @@ def apply_beam(map_, beamfile, pol):
     ll = data[:,0]
     Bl = data[:,1]
     Bl /= Bl[0]
-    ellmax = int(ll[-1])
+    ellmax = min(int(ll[-1]), int(3*hp.get_nside(map_)-1))
     beam_convolved_map = hp.smoothing(map_, beam_window=Bl, pol=pol, lmax=ellmax)
     beam_convolved_map = np.array(beam_convolved_map, dtype=np.float32)
     return beam_convolved_map
@@ -55,8 +55,9 @@ def get_all_beam_convolved_maps(inp, all_maps):
             beamfiles.append(beamfile)
     
     pool = mp.Pool(12)
-    results = pool.starmap(apply_beam, [(freq_maps[i//4, i%4], beamfiles[i], inp.pol) for i in range(12)])
+    results = pool.starmap(apply_beam, [(freq_maps[i//4], beamfiles[i], inp.pol) for i in range(12)])
     pool.close()
+    results = np.array(results, dtype=np.float32)
 
     if not inp.pol: #index as all_maps[freq, split, pixel], freqs in decreasing order
         beam_convolved_maps = np.reshape(results, (3, 4, 12*inp.nside**2))

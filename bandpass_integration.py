@@ -267,5 +267,6 @@ def get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=None, all
     pool = mp.Pool(3)
     all_maps = pool.starmap(combined_map_before_beam, [(inp, all_bandpass_freqs[i], all_central_freqs[i], all_bandpass_weights[i], plot_hist) for i in range(3)])
     pool.close()
+    all_maps = np.array(all_maps, dtype=np.float32)
     plt.close('all')
     return all_maps

@@ -44,15 +44,20 @@ def get_all_CAR_maps(inp, beam_convolved_maps):
     car_maps = []
     freqs = [220, 150, 90]
 
-    pool = mp.Pool(min(inp.nsims, 12))
+    res = np.pi/inp.ellmax*(180/np.pi)*60.
+    shape, wcs = enmap.fullsky_geometry(res=res * utils.arcmin, proj='car')
+
+    pool = mp.Pool(12)
     results = pool.starmap(healpix2CAR, [(inp, beam_convolved_maps[i//4, i%4]) for i in range(12)])
     pool.close()
     
     idx = 0
     for freq in range(3):
         for split in range(4):
-            car_maps.append(results[idx])
+            map_to_write = results[idx]
+            map_to_write = enmap.ndmap(map_to_write, wcs) 
+            car_maps.append(map_to_write)
+            enmap.write_map(f'{inp.output_dir}/sim_{freqs[freq]}GHz_split{split}', map_to_write)
             idx += 1
-            enmap.write_map(f'sim_{freqs[freq]}GHz_split{split}', results[idx])
     
     return car_maps

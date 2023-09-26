@@ -13,8 +13,8 @@ def main():
     '''
     RETURNS
     -------
-    car_maps: list of CAR maps at frequencies 220, 150, and 90 GHz. If pol, each 
-            map contains [I,Q,U], otherwise just I
+    car_maps: list of CAR maps at frequencies 220, 150, and 90 GHz for each split. 
+        If pol, each map contains [I,Q,U], otherwise just I.
     '''
 
     # main input file containing most specifications 
@@ -31,7 +31,7 @@ def main():
         env = os.environ.copy()
         subprocess.call(f'mkdir {inp.output_dir}', shell=True, env=env)
     
-    #Set up output directory for plots
+    # set up output directory for plots
     if inp.plot_dir and not os.path.isdir(inp.plot_dir):
         env = os.environ.copy()
         subprocess.call(f'mkdir {inp.plot_dir}', shell=True, env=env)
@@ -39,7 +39,7 @@ def main():
     # get bandpass frequencies and weights
     all_bandpass_freqs, all_bandpass_weights = get_all_bandpass_freqs_and_weights(inp)
     pickle.dump(all_bandpass_freqs, open(f'{inp.output_dir}/all_bandpass_freqs.p', 'wb'))
-    pickle.dump(all_bandpass_weights, open(f'{inp.utput_dir}/all_bandpass_weights.p', 'wb'))
+    pickle.dump(all_bandpass_weights, open(f'{inp.output_dir}/all_bandpass_weights.p', 'wb'))
     print('Got passbands', flush=True)
     
 
@@ -49,7 +49,7 @@ def main():
         print('Computed coupling matrix for mask deconvolution', flush=True)
 
 
-    #get galactic and extragalactic component maps
+    # get galactic and extragalactic component maps
     all_maps = get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=[220, 150, 90], all_bandpass_weights=all_bandpass_weights)
     pickle.dump(all_maps, open(f'{inp.output_dir}/maps_before_beam.p', 'wb'), protocol=4)
     print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)

@@ -64,7 +64,6 @@ def diff_inpaint(map_inp, MASK_VAL=-1.e30):
     iteration=0
     t1=time.time()
     while (len(mask_pix) > 0):
-        print (iteration,len(mask_pix),time.time()-t1,flush=True)
         t1=time.time()
         # 1) get all the neighbor pixels -- n.b. some values returned here could be -1 (if that neighbor doesn't exist)
         nabes = hp.pixelfunc.get_all_neighbours(Nside, mask_pix)
@@ -116,7 +115,6 @@ def diff_inpaint_vectorized(map_inp, MASK_VAL=-1.e30,N_nabes_req=4):
     iteration=0
     while (len(mask_pix) > 0):
 
-        print (iteration,len(mask_pix),)
         # 1) get all the neighbor pixels -- n.b. some values returned here could be -1 (if that neighbor doesn't exist)
         nabes = hp.pixelfunc.get_all_neighbours(Nside, mask_pix)
 

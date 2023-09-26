@@ -69,10 +69,10 @@ class Info(object):
             return
         if not self.plot_dir:
             assert not self.plots_to_make, "Must define plot_dir if plots_to_make is not an emptry list"
-        assert set(self.plots_to_make).issubset({'passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 
+        assert set(self.plots_to_make).issubset({'passband', 'beams', 'maps_before_beam', 'freq_maps_no_beam', 
               'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra',
               'mask_deconvolved_comp_spectra'}), \
-              "plots_to_make must be a subset of 'passband', 'gal_and_extragal_comps', 'freq_maps_no_beam', 'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra', 'mask_deconvolved_comp_spectra'"
+              "plots_to_make must be a subset of 'passband', 'beams', 'maps_before_beam', 'freq_maps_no_beam', 'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra', 'mask_deconvolved_comp_spectra'"
         if 'mask_deconvolved_spectra' in self.plots_to_make or 'mask_deconvolved_comp_spectra' in self.plots_to_make:
             assert self.ells_per_bin is not None and self.mask_file is not None, "mask_file and ells_per_bin must be defined to plot mask-deconvolved spectra"
         if self.plots_to_make == 'all' or 'all_comp_spectra' in self.plots_to_make:
