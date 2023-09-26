@@ -31,8 +31,8 @@ def get_all_beam_convolved_maps(inp, all_maps):
     ARGUMENTS
     ---------
     inp: Info object containing input specifications
-    all_maps: ndarray of shape (Nfreqs, 2 for galactic or extragalactic, Npix), 
-             if not pol, or shape (Nfreqs, 2 for galactic or extragalactic, 3 for I/Q/U, Npix) if pol
+    all_maps: ndarray of shape (Nfreqs, Npix), 
+             if not pol, or shape (Nfreqs, 3 for I/Q/U, Npix) if pol
              contains healpix maps of galactic and extragalactic components before beam convolution
     
     RETURNS
@@ -42,7 +42,7 @@ def get_all_beam_convolved_maps(inp, all_maps):
         contains beam-convolved healpix maps for each frequency and split
     '''
     
-    freq_maps = np.sum(all_maps, axis=1) #shape Nfreqs, 1 if not pol or 3 if pol, Npix
+    freq_maps = all_maps #shape (Nfreqs, Npix) if not pol or (Nfreqs, 3, Npix) if pol
     beamfiles = []
     for freq in range(3):
         for split in range(4):
@@ -54,7 +54,7 @@ def get_all_beam_convolved_maps(inp, all_maps):
                 beamfile = f'{inp.beam_dir}/set{split}_pa6_f090_night_beam_tform_jitter_cmb.txt'
             beamfiles.append(beamfile)
     
-    pool = mp.Pool(min(inp.nsims, 12))
+    pool = mp.Pool(12)
     results = pool.starmap(apply_beam, [(freq_maps[i//4, i%4], beamfiles[i], inp.pol) for i in range(12)])
     pool.close()
 

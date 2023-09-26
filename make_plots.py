@@ -71,31 +71,27 @@ def plot_outputs(inp):
 
 
     #Galactic and Extragalactic Component Maps
-    if inp.plots_to_make == 'all' or 'gal_and_extragal_comps' in inp.plots_to_make:
-        all_maps = pickle.load(open(f'{inp.output_dir}/gal_and_extragal_before_beam.p', 'rb'))
+    if inp.plots_to_make == 'all' or 'maps_before_beam' in inp.plots_to_make:
+        all_maps = pickle.load(open(f'{inp.output_dir}/maps_before_beam.p', 'rb'))
         freqs = [220, 150, 90]
         map_types = ['I', 'Q', 'U']
-        comp_types = ['Galactic Components', 'Extragalactic Components']
         for freq in range(3):
-            for c, comp_type in enumerate(comp_types):
-                if not inp.pol:
+            if not inp.pol:
+                plt.clf()
+                hp.mollview(all_maps[freq], title=f'{freqs[freq]} GHz')
+                plt.savefig(f'{inp.plot_dir}/{freqs[freq]}_before_beam.png')
+                print(f'saved {inp.plot_dir}/{freqs[freq]}_before_beam.png', flush=True)
+            else:
+                for map_type in range(3):
                     plt.clf()
-                    comp_type_no_space = comp_type.replace(' ', '')
-                    hp.mollview(all_maps[freq,c], title=f'{freqs[freq]} GHz {comp_type}')
-                    plt.savefig(f'{inp.plot_dir}/{comp_type_no_space}_{freqs[freq]}.png')
-                    print(f'saved {inp.plot_dir}/{comp_type_no_space}_{freqs[freq]}.png', flush=True)
-                else:
-                    for map_type in range(3):
-                        plt.clf()
-                        comp_type_no_space = comp_type.replace(' ', '')
-                        hp.mollview(all_maps[freq,c,map_type], title=f'{freqs[freq]} GHz {map_types[map_type]} {comp_type} Map')
-                        plt.savefig(f'{inp.plot_dir}/{comp_type_no_space}_{map_types[map_type]}_{freqs[freq]}.png')
-                        print(f'saved {inp.plot_dir}/{comp_type_no_space}_{map_types[map_type]}_{freqs[freq]}.png', flush=True)
+                    hp.mollview(all_maps[freq,map_type], title=f'{freqs[freq]} GHz {map_types[map_type]} Map')
+                    plt.savefig(f'{inp.plot_dir}/{map_types[map_type]}_{freqs[freq]}_before_beam.png')
+                    print(f'saved {inp.plot_dir}/{map_types[map_type]}_{freqs[freq]}_before_beam.png', flush=True)
 
 
     #Frequency Maps and Power Spectra without Beam
     if inp.plots_to_make == 'all' or 'freq_maps_no_beam' in inp.plots_to_make:
-        freq_maps = np.sum(all_maps, axis=1)
+        freq_maps = all_maps
         for freq in range(3):
             if not inp.pol:
                 plt.clf()

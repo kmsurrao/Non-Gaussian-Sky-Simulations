@@ -4,6 +4,30 @@ import pickle
 import pymaster as nmt
 import matplotlib.pyplot as plt
 
+def compute_coupling_matrices(inp):
+    '''
+    ARGUMENTS
+    ---------
+    inp: Info object containing input parameter specifications
+
+    RETURNS
+    -------
+    None (modified inp in-place)
+    '''
+    inp.wsp = nmt.NmtWorkspace()
+    inp.b = nmt.NmtBin.from_lmax_linear(inp.ellmax, inp.ells_per_bin, is_Dell=True)
+    mask = hp.read_map(inp.mask_file, field=(3)) #70% fsky
+    mask = hp.ud_grade(mask, inp.nside)
+    f_tmp = nmt.NmtField(mask, [np.ones_like(mask)])
+    inp.wsp.compute_coupling_matrix(f_tmp, f_tmp, inp.b)
+    if inp.pol:
+        inp.wsp2 = nmt.NmtWorkspace() #temperature x pol
+        inp.wsp3 = nmt.NmtWorkspace() #pol x pol
+        f_tmp_pol = nmt.NmtField(mask, [np.ones_like(mask), np.ones_like(mask)])
+        inp.wsp2.compute_coupling_matrix(f_tmp, f_tmp_pol, inp.b)
+        inp.wsp3.compute_coupling_matrix(f_tmp_pol, f_tmp_pol, inp.b)
+    return
+
 def compute_master(inp, mask, map1, map2=None):
     '''
     Use this function to compute mask-deconvolved spectra if computing them multiple times

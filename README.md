@@ -37,8 +37,8 @@ The following outputs are saved in the output directory listed in the yaml file:
     - list of 3 numpy arrays of frequencies (GHz) in the passband (first array has central frequency 220 GHz, followed by 150, and then 90)  
 2. all_bandpass_weights.p  
     - list of 3 numpy arrays of bandpass weights with $\nu^2$ divided out (first array contains weights for central frequency 220 GHz, followed by 150, and then 90)  
-3. gal_and_extragal_before_beam.p  
-    - numpy array containing galactic and extragalactic component maps in healpix format before beam convolution. If generating polarized maps, gal_and_extragal_before_beam has shape (Nfreqs, 2 for gal and extragal, 3 for I/Q/U, Npix), where freqs are indexed in decreasing order. If generating only a temperature map, gal_and_extragal_before_beam has shape (Nfreqs, 2 for gal or extragal, Npix).  
+3. maps_before_beam.p  
+    - numpy array containing galactic and extragalactic component maps in healpix format before beam convolution. If generating polarized maps, maps_before_beam has shape (Nfreqs, 3 for I/Q/U, Npix), where freqs are indexed in decreasing order. If generating only a temperature map, maps_before_beam has shape (Nfreqs, Npix).  
 4. beam_convolved_maps.p  
     - numpy array containing beam-convolved maps in healpix format. If generating polarized maps, beam_convolved_maps has shape (Nfreqs, Nsplits, 3 for I/Q,U, Npix). Otherwise, has shape (Nfreqs, Nsplits, Npix).  
 5. sim_{freq}GHz_split{split}  

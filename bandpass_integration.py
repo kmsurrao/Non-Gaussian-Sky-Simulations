@@ -5,6 +5,8 @@ import pysm3.units as u
 import h5py
 from scipy.interpolate import interp1d
 import pickle
+import matplotlib.pyplot as plt
+import multiprocessing as mp
 from galactic_mask import compute_master
 from apply_flux_cut import initial_masking
 from utils import plot_histogram
@@ -39,6 +41,28 @@ def get_bandpass_freqs_and_weights(central_freq, passband_file):
         bandpass_weights = mean_band/frequencies**2
             
     return frequencies, bandpass_weights
+
+
+def get_all_bandpass_freqs_and_weights(inp):
+    '''
+    ARGUMENTS
+    ---------
+    inp: Info object containing input parameter specifications
+    
+    RETURNS
+    -------
+    all_bandpass_freqs: (Nfreqs, Nfreqs_in_passband) ndarray of frequencies in the 
+        passband (in GHz)
+    all_bandpass_weights: (Nfreqs, Nfreqs_in_passband) ndarray of weights for each 
+        frequency in the passband (with nu^2 divided out)
+    '''
+    all_bandpass_freqs = []
+    all_bandpass_weights = []
+    for central_freq in [220, 150, 90]:
+        bandpass_freqs, bandpass_weights = get_bandpass_freqs_and_weights(central_freq, inp.passband_file)
+        all_bandpass_freqs.append(bandpass_freqs)
+        all_bandpass_weights.append(bandpass_weights)
+    return all_bandpass_freqs, all_bandpass_weights
 
 
 
@@ -122,7 +146,7 @@ def get_extragalactic_comp_maps(inp, freq, plot_hist=True):
     ARGUMENTS
     ---------
     inp: Info object containing input specifications
-    freq: int, central banpass frequency (in GHz)
+    freq: int, central bandpass frequency (in GHz)
     plot_hist: Bool, whether to plot histogram values before and after inpainting
         for CIB and radio components
     
@@ -191,3 +215,57 @@ def get_extragalactic_comp_maps(inp, freq, plot_hist=True):
     
     extragal_comps = np.array(extragal_comps, dtype=np.float32)
     return extragal_comps
+
+
+
+def combined_map_before_beam(inp, bandpass_freqs, central_freq=None, bandpass_weights=None, plot_hist=True):
+    '''
+    ARGUMENTS
+    ---------
+    inp: Info object containing input specifications
+    bandpass_freqs: numpy array of frequencies in the passband (in GHz)
+    central_freq: float, central banpass frequency (in GHz)
+    bandpass_weights: numpy array of weights for each frequency in the passband 
+                     (length should be the same as bandpass_freqs)
+    plot_hist: Bool, whether to plot histogram values before and after inpainting
+        for CIB and radio components
+    
+    RETURNS
+    -------
+    combined_map: ndarray containing bandpass integrated map of all galactic and
+        extragalactic components in healpix format
+        if pol: combined_map has shape (3 for IQU, Npix)
+        if not pol: combined_map has shape (Npix, )
+    '''
+    gal_comps = get_galactic_comp_maps(inp, bandpass_freqs, central_freq=central_freq, bandpass_weights=bandpass_weights)
+    extragal_comps = get_extragalactic_comp_maps(inp, central_freq, plot_hist=True)
+    combined_map = gal_comps + extragal_comps
+    return combined_map
+
+
+
+def get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=None, all_bandpass_weights=None):
+    '''
+    ARGUMENTS
+    ---------
+    inp: Info object containing input specifications
+    all_bandpass_freqs: (Nfreqs, Nfreqs_in_passband) ndarray of frequencies in the 
+        passband (in GHz)
+    all_central_freqs: (Nfreqs, ) array-like of floats, containing central banpass 
+        frequencies (in GHz)
+    all_bandpass_weights: (Nfreqs, Nfreqs_in_passband) ndarray of weights for each 
+        frequency in the passband 
+    
+    RETURNS
+    -------
+    all_maps: ndarray containing bandpass integrated maps of 
+        all galactic and extragalactic combined maps in healpix format
+        if pol: all_maps has shape (3 for IQU, Npix)
+        if not pol: all_maps has shape (Npix,)
+    '''
+    plot_hist = True if inp.plot_dir else False
+    pool = mp.Pool(3)
+    all_maps = pool.starmap(combined_map_before_beam, [(inp, all_bandpass_freqs[i], all_central_freqs[i], all_bandpass_weights[i], plot_hist) for i in range(3)])
+    pool.close()
+    plt.close('all')
+    return all_maps

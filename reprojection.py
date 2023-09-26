@@ -16,8 +16,7 @@ def healpix2CAR(inp, healpix_map):
     '''
     res = np.pi/inp.ellmax*(180/np.pi)*60.
     shape, wcs = enmap.fullsky_geometry(res=res * utils.arcmin, proj='car')
-    ncomp = 3 if inp.pol else 1
-    car_map = reproject.enmap_from_healpix(healpix_map, shape, wcs, ncomp=ncomp, unit=1, lmax=inp.ellmax, rot="gal,equ")
+    car_map = reproject.healpix2map(healpix_map, shape, wcs, lmax=inp.ellmax, rot="gal,equ")
     return car_map
 
 
