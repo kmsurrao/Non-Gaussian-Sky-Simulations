@@ -18,6 +18,16 @@ def plot_outputs(inp):
     None
     '''
 
+    #Plotting definitions
+    colors = ['red', 'blue', 'green']
+    linestyles = ['solid', 'dashed', 'dotted', 'dashdot']
+    ells = np.arange(inp.ellmax+1)
+    to_dl = ells*(ells+1)/2/np.pi
+    all_maps = pickle.load(open(f'{inp.output_dir}/maps_before_beam.p', 'rb'))
+    freqs = [220, 150, 90]
+    map_types = ['I', 'Q', 'U']
+    spectra_types = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
+
     #Passbands
     if inp.plots_to_make == 'all' or 'passband' in inp.plots_to_make:
         plt.clf()
@@ -72,26 +82,6 @@ def plot_outputs(inp):
         plt.close('all')
 
 
-    #Galactic and Extragalactic Component Maps
-    if inp.plots_to_make == 'all' or 'maps_before_beam' in inp.plots_to_make:
-        all_maps = pickle.load(open(f'{inp.output_dir}/maps_before_beam.p', 'rb'))
-        freqs = [220, 150, 90]
-        map_types = ['I', 'Q', 'U']
-        for freq in range(3):
-            if not inp.pol:
-                plt.clf()
-                hp.mollview(all_maps[freq], title=f'{freqs[freq]} GHz')
-                plt.savefig(f'{inp.plot_dir}/{freqs[freq]}_before_beam.png')
-                print(f'saved {inp.plot_dir}/{freqs[freq]}_before_beam.png', flush=True)
-            else:
-                for map_type in range(3):
-                    plt.clf()
-                    hp.mollview(all_maps[freq,map_type], title=f'{freqs[freq]} GHz {map_types[map_type]} Map')
-                    plt.savefig(f'{inp.plot_dir}/{map_types[map_type]}_{freqs[freq]}_before_beam.png')
-                    print(f'saved {inp.plot_dir}/{map_types[map_type]}_{freqs[freq]}_before_beam.png', flush=True)
-        plt.close('all')
-
-
     #Frequency Maps and Power Spectra without Beam
     if inp.plots_to_make == 'all' or 'freq_maps_no_beam' in inp.plots_to_make:
         freq_maps = all_maps
@@ -102,28 +92,44 @@ def plot_outputs(inp):
                 plt.savefig(f'{inp.plot_dir}/no_beam_{freqs[freq]}.png')
                 print(f'saved {inp.plot_dir}/no_beam_{freqs[freq]}.png', flush=True)
             else:
+                plt.clf()
+                fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(9,6), sharey=True)
+                axs = (ax1, ax2, ax3)
                 for map_type in range(3):
-                    plt.clf()
-                    hp.mollview(freq_maps[freq,map_type], title=f'{freqs[freq]} GHz {map_types[map_type]} Map')
-                    plt.savefig(f'{inp.plot_dir}/no_beam_{freqs[freq]}_{map_types[map_type]}.png')
-                    print(f'saved {inp.plot_dir}/no_beam_{freqs[freq]}_{map_types[map_type]}.png', flush=True)
+                    plt.axes(axs[map_type])
+                    hp.mollview(freq_maps[freq,map_type], title=f'{freqs[freq]} GHz {map_types[map_type]} Map', hold=True)
+                plt.savefig(f'{inp.plot_dir}/no_beam_{freqs[freq]}.png')
+                print(f'saved {inp.plot_dir}/no_beam_{freqs[freq]}.png', flush=True)
         plt.clf()
-        ells = np.arange(inp.ellmax+1)
-        to_dl = ells*(ells+1)/2/np.pi
-        for freq in range(3):
-            if not inp.pol:
-                plt.plot(ells[2:], (to_dl*hp.anafast(freq_maps[freq], lmax=inp.ellmax))[2:], label=f'{freqs[freq]} GHz')
-            else:
-                spectra = hp.anafast(freq_maps[freq], lmax=inp.ellmax, pol=True)
-                spectra_types = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
-                for t in range(6):
-                    plt.plot(ells[2:], (to_dl*spectra[t])[2:], label=f'{freqs[freq]} GHz {spectra_types[t]}')       
-        plt.xlabel(r'$\ell$')
-        plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
-        plt.grid()
-        plt.legend()
-        plt.savefig(f'{inp.plot_dir}/no_beam_power_spectra.png')
-        print(f'saved {inp.plot_dir}/no_beam_power_spectra.png', flush=True)
+        if not inp.pol:
+            for freq in range(3):
+                plt.plot(ells[2:], (to_dl*hp.anafast(freq_maps[freq], lmax=inp.ellmax))[2:], label=f'{freqs[freq]} GHz', color=colors[freq])
+            plt.xlabel(r'$\ell$')
+            plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+            plt.grid()
+            plt.legend()
+            plt.savefig(f'{inp.plot_dir}/no_beam_power_spectra.png')
+            print(f'saved {inp.plot_dir}/no_beam_power_spectra.png', flush=True)
+        else:
+            spectra_no_beam = np.zeros((3,6,inp.ellmax+1), dtype=np.float32)
+            for freq in range(3):
+                spectra_no_beam[freq] = hp.anafast(freq_maps[freq], lmax=inp.ellmax, pol=True)
+            fig, axs = plt.subplots(2, 3, figsize=(9,6))
+            axs = axs.flatten()
+            for t in range(6):
+                plt.axes(axs[t])
+                for freq in range(3):
+                    plt.plot(ells[2:], (to_dl*spectra_no_beam[freq,t])[2:], label=f'{freqs[freq]} GHz', color=colors[freq])  
+                plt.grid()
+                plt.xlabel(r'$\ell$')
+                plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+                plt.title(f'{spectra_types[t]}')
+                if t <= 2:
+                    plt.yscale('log')
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(f'{inp.plot_dir}/no_beam_power_spectra.png')
+            print(f'saved {inp.plot_dir}/no_beam_power_spectra.png', flush=True)
         plt.close('all')
 
 
@@ -139,64 +145,115 @@ def plot_outputs(inp):
                     plt.savefig(f'{inp.plot_dir}/beam_{freqs[freq]}_split{split}.png')
                     print(f'saved {inp.plot_dir}/beam_{freqs[freq]}_split{split}.png', flush=True)
                 else:
+                    plt.clf()
+                    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(9,6), sharey=True)
+                    axs = (ax1, ax2, ax3)
                     for map_type in range(3):
-                        plt.clf()
-                        hp.mollview(beam_convolved_maps[freq, split, map_type], title=f'{freqs[freq]} GHz Split {split} {map_types[map_type]} Map')
-                        plt.savefig(f'{inp.plot_dir}/beam_{freqs[freq]}_{map_types[map_type]}_split{split}.png')
-                        print(f'saved {inp.plot_dir}/beam_{freqs[freq]}_{map_types[map_type]}_split{split}.png', flush=True)
-        plt.clf()
+                        plt.axes(axs[map_type])
+                        hp.mollview(beam_convolved_maps[freq, split, map_type], title=f'{freqs[freq]} GHz Split {split} {map_types[map_type]} Map', hold=True)
+                    plt.savefig(f'{inp.plot_dir}/beam_{freqs[freq]}_split{split}.png')
+                    print(f'saved {inp.plot_dir}/beam_{freqs[freq]}_split{split}.png', flush=True)
+        if not inp.pol:
+            beam_convolved_spectra = np.zeros((3, 4, inp.ellmax+1), dtype=np.float32)
+        else:
+            beam_convolved_spectra = np.zeros((3, 4, 6, inp.ellmax+1), dtype=np.float32)
         for freq in range(3):
             for split in range(4):
-                if not inp.pol:
-                    plt.plot(ells[2:], (to_dl*hp.anafast(beam_convolved_maps[freq, split], lmax=inp.ellmax))[2:], label=f'{freqs[freq]} GHz, split {split}')
-                else:
-                    spectra = hp.anafast(beam_convolved_maps[freq, split], lmax=inp.ellmax, pol=True)
-                    spectra_types = ['TT', 'EE', 'BB', 'TE', 'EB', 'TB']
-                    for t in range(6):
-                        plt.plot(ells[2:], (to_dl*spectra[t])[2:], label=f'{freqs[freq]} GHz {spectra_types[t]}, split {split}')
-        plt.xlabel(r'$\ell$')
-        plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
-        plt.grid()
-        plt.legend()
-        plt.savefig(f'{inp.plot_dir}/beam_power_spectra.png')
-        print(f'saved {inp.plot_dir}/beam_power_spectra.png', flush=True)
-        plt.close('all')
+                beam_convolved_spectra[freq,split] = hp.anafast(beam_convolved_maps[freq, split], lmax=inp.ellmax, pol=inp.pol)
+        if not inp.pol:
+            plt.clf()
+            for freq in range(3):
+                for split in range(4):
+                    spectra_to_plot = beam_convolved_spectra[freq,split]
+                    plt.plot(ells[2:], (to_dl*spectra_to_plot)[2:], label=f'{freqs[freq]} GHz, split {split}', color=colors[freq], linestyle=linestyles[split])
+            plt.xlabel(r'$\ell$')
+            plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+            plt.yscale('log')
+            plt.grid()
+            plt.legend()
+            plt.savefig(f'{inp.plot_dir}/beam_convolved_map_power_spectra.png')
+            print(f'saved {inp.plot_dir}/beam_convolved_map_power_spectra.png', flush=True)
+        else:
+            plt.clf()
+            fig, axs = plt.subplots(2, 3, figsize=(9,6))
+            axs = axs.flatten()
+            for t in range(6):
+                plt.axes(axs[t])
+                for freq in range(3):
+                    for split in range(4):
+                        spectra_to_plot = beam_convolved_spectra[freq,split,t]
+                        plt.plot(ells[2:], (to_dl*spectra_to_plot)[2:], label=f'{freqs[freq]} GHz, split {split}', color=colors[freq], linestyle=linestyles[split])
+                plt.xlabel(r'$\ell$')
+                plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+                plt.grid()
+                plt.title(f'{spectra_types[t]}')
+                if t <= 2:
+                    plt.yscale('log')
+            handles, labels = axs[-1].get_legend_handles_labels()
+            fig.legend(handles, labels, fontsize=12, bbox_to_anchor=(1.0, 0.), ncol=3)
+            plt.tight_layout()
+            plt.savefig(f'{inp.plot_dir}/beam_convolved_map_power_spectra.png')
+            print(f'saved {inp.plot_dir}/beam_convolved_map_power_spectra.png', flush=True)
+            plt.close('all')
 
 
     #Final CAR Maps and Power Spectra
     if inp.plots_to_make == 'all' or 'CAR_maps' in inp.plots_to_make:
-        colors = ['red', 'blue', 'green']
-        linestyles = ['solid', 'dashed', 'dotted', 'dashdot']
         for i, freq in enumerate([220, 150, 90]):
             for split in range(4):
                 map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split{split}')
                 for map_type in range(3):
                     plt.clf()
-                    to_plot = enplot.plot(map_[map_type])
+                    if inp.pol:
+                        to_plot = enplot.plot(map_[map_type])
+                    else:
+                        to_plot = enplot.plot(map_)
                     enplot.write(f'{inp.plot_dir}/CAR_{map_types[map_type]}map_{freq}_split{split}', to_plot)
                     print(f'saved {inp.plot_dir}/CAR_{map_types[map_type]}map_{freq}_split{split}', flush=True)
                     if not inp.pol: 
                         break
         plt.clf()
-        for i, freq in enumerate([220, 150, 90]):
-            for split in range(4):
-                map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split{split}')
-                alm = curvedsky.map2alm(map_, lmax=inp.ellmax)
-                if not inp.pol:
-                    cl = curvedsky.alm2cl(alm)
-                    plt.plot(ells, ells*(ells+1)/2/np.pi*cl[0], label=f'{freq} GHz')
-                else:
+        if not inp.pol:
+            for i, freq in enumerate([220, 150, 90]):
+                for split in range(4):
+                    map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split{split}')
+                    alm = curvedsky.map2alm(map_, lmax=inp.ellmax)
+                    if not inp.pol:
+                        cl = curvedsky.alm2cl(alm)
+                        plt.plot(ells, ells*(ells+1)/2/np.pi*cl[0], label=f'{freq} GHz')
+            plt.xlabel(r'$\ell$')
+            plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+            plt.grid()
+            plt.legend()
+            plt.savefig(f'{inp.plot_dir}/CAR_beam_power_spectra.png')
+            print(f'saved {inp.plot_dir}/CAR_beam_power_spectra.png', flush=True)
+            
+        else:
+            fig, axs = plt.subplots(2, 3, figsize=(9,6))
+            axs = axs.flatten()
+            spectra_types_here = ['T', 'E', 'B']
+            for i, freq in enumerate([220, 150, 90]):
+                for split in range(4):
+                    map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split{split}')
+                    alm = curvedsky.map2alm(map_, lmax=inp.ellmax)
                     cl = curvedsky.alm2cl(alm[:,None,:], alm[None,:,:])
-                    spectra_types = ['T', 'E', 'B']
+                    ax = 0
                     for t1 in range(3):
-                        for t2 in range(3):
-                            plt.plot(ells[2:], (to_dl*cl[t1,t2])[2:], label=f'{freq} GHz {spectra_types[t1]}{spectra_types[t2]}', color=colors[i], linestyle=linestyles[split])
-        plt.xlabel(r'$\ell$')
-        plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
-        plt.grid()
-        plt.legend()
-        plt.savefig(f'{inp.plot_dir}/CAR_beam_power_spectra.png')
-        print(f'saved {inp.plot_dir}/CAR_beam_power_spectra.png', flush=True)
+                        for t2 in range(t1,3):
+                            plt.axes(axs[ax])
+                            ax += 1
+                            plt.plot(ells[2:], (to_dl*cl[t1,t2])[2:], label=f'{freq} GHz Split {split}', color=colors[i], linestyle=linestyles[split])
+                            plt.title(f'{spectra_types_here[t1]}{spectra_types_here[t2]}')
+                            plt.xlabel(r'$\ell$')
+                            plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+                            plt.grid()
+                            if t1==t2:
+                                plt.yscale('log')
+            handles, labels = axs[-1].get_legend_handles_labels()
+            fig.legend(handles, labels, fontsize=12, bbox_to_anchor=(1.0, 0.), ncol=3)
+            plt.tight_layout()
+            plt.savefig(f'{inp.plot_dir}/CAR_beam_power_spectra.png')
+            print(f'saved {inp.plot_dir}/CAR_beam_power_spectra.png', flush=True)
         plt.close('all')
     
 
@@ -224,8 +281,11 @@ def plot_outputs(inp):
                 plt.savefig(f'{inp.plot_dir}/all_comp_spectra_{freq}.png')
                 print(f'saved {inp.plot_dir}/all_comp_spectra_{freq}.png', flush=True)
             else:
+                plt.clf()
+                fig, axs = plt.subplots(2, 3, figsize=(9,6))
+                axs = axs.flatten()
                 for m in range(6):
-                    plt.clf()
+                    plt.axes(axs[m])
                     for c in range(len(gal_spectra)):
                         plt.plot(ells[2:], (to_dl*gal_spectra[c,m])[2:], label=gal_comps[c])
                     for c in range(len(extragal_spectra)):
@@ -235,11 +295,15 @@ def plot_outputs(inp):
                     plt.xlabel(r'$\ell$')
                     plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
                     plt.grid()
-                    plt.legend()
-                    plt.savefig(f'{inp.plot_dir}/all_comp_spectra_{freq}_{modes[m]}.png')
-                    print(f'saved {inp.plot_dir}/all_comp_spectra_{freq}_{modes[m]}.png', flush=True)
+                    plt.title(f'{modes[m]}')
+                handles, labels = axs[-1].get_legend_handles_labels()
+                fig.legend(handles, labels, fontsize=12, bbox_to_anchor=(1.0, 0.), ncol=3)
+                plt.suptitle(f'{freq} GHz', fontsize=20)
+                plt.tight_layout()
+                plt.savefig(f'{inp.plot_dir}/all_comp_spectra_{freq}.png')
+                print(f'saved {inp.plot_dir}/all_comp_spectra_{freq}.png', flush=True)
         plt.close('all')
-    
+
 
     #Galactic Mask-Deconvolved Power Spectrum at Each Frequency
     if  inp.plots_to_make=='all' or 'mask_deconvolved_spectra' in inp.plots_to_make:

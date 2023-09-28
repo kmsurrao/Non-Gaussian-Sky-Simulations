@@ -1,8 +1,8 @@
 # nside (resolution parameter) at which to create HEALPIX maps, ideally 8192
-nside: 8192 
+nside: 512 
 
 # maximum ell for which to compute power spectra, ideally 10000
-ellmax: 10000
+ellmax: 500
 
 # pysm predefined strings for galactic components to include in maps
 galactic_components: ['d10', 's5', 'a1', 'f1'] 
@@ -10,48 +10,34 @@ galactic_components: ['d10', 's5', 'a1', 'f1']
 # whether or not to compute polarization maps 
 # set to zero to produce temperature maps only, 
 # set to nonzero value to produce both temperature and polarization maps (T,Q,U)
-pol: 0
+pol: 1
 
 # file containing ACT passband information
-passband_file: '/scratch/09334/ksurrao/ACT_sims/passbands_20220316/AdvACT_Passbands.h5' 
+passband_file: '/Users/kristen/Documents/GitHub/ACT-Simulations/passbands_20220316/AdvACT_Passbands.h5' 
 
 # directory containing agora extragalactic sims, /global/cfs/cdirs/act/data/agora_sims/outputs on NERSC
-agora_sims_dir: '/scratch/09334/ksurrao/ACT_sims/agora' 
+agora_sims_dir: '/Users/kristen/Documents/GitHub/ACT-Simulations/agora' 
 
-# file with columns ell, D_ell (uK^2) of patchy kSZ, set to 0 or None if no such file
-ksz_reionization_file: '/scratch/09334/ksurrao/ACT_sims/agora/FBN_kSZ_PS_patchy.txt' 
+# file with columns ell, D_ell (uK^2) of patchy kSZ, set to 0 if no such file
+ksz_reionization_file: '/Users/kristen/Documents/GitHub/ACT-Simulations/agora/FBN_kSZ_PS_patchy.txt' 
 
 # directory containing beam files /global/cfs/cdirs/act/data/adriaand/beams/20230902_beams on NERSC
-beam_dir: '/scratch/09334/ksurrao/ACT_sims/beams'
+beam_dir: '/Users/kristen/Documents/GitHub/ACT-Simulations/beams'
 
 # directory in which to put outputs (can be full path)
-output_dir: '/scratch/09334/ksurrao/ACT_sims/outputs_nside8192' 
+output_dir: 'outputs_nside512' 
 
 # directory in which to save plots, only needs to be defined if plotting
-plot_dir: '/scratch/09334/ksurrao/ACT_sims/plots_nside8192'
+plot_dir: 'plots_nside512' 
 
-# file containing Planck galactic masks, field 3 is 70% fsky mask and field 5 is 90% fsky
-# only define if computing galactic mask-deconvolved spectra
-  # i.e., if 'component_mask_deconvolution' or 'freq_map_mask_deconvolution' in checks list
-mask_file: '/scratch/09334/ksurrao/ACT_sims/HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
 
-# number of ells per bin for NaMaster mask deconvolution
-# only needs to be defined if computing galactic mask-deconvolved spectra
-  # i.e., if 'component_mask_deconvolution' or 'freq_map_mask_deconvolution' in checks list
-ells_per_bin: 200 
-
-# directory containing noise simulations (/global/cfs/cdirs/act/data/act_dr6v4/simulations/noise/sims on Perlmutter)
-# only needs to be defined if adding noise to the signal simulations
-# leave as empty string or omit input for noise not to be added
-noise_dir: '/scratch/09334/ksurrao/ACT_sims/noise_sims'
 
 # list of strings of checks to perform, leave as empty list if not performing checks
 # options are the following:
   # 'component_power_spectra': compute power spectra of individual components
   # 'component_mask_deconvolution':, compute power spectra of individual galactic mask-deconovolved components
   # 'freq_map_mask_deconvolution': compute power spectra of galactic mask-deconvolved frequency maps
-checks: ['component_power_spectra', 'component_mask_deconvolution', 
-                      'freq_map_mask_deconvolution']
+checks: ['component_power_spectra']
 
 # list of strings of which plots to make, leave as empty list if not plotting
 # options are the following:
@@ -67,5 +53,4 @@ checks: ['component_power_spectra', 'component_mask_deconvolution',
 # can alternatively set to single string 'all' to make all plots, in which case
 # 'component_power_spectra', 'component_mask_deconvolution', and 'freq_map_mask_deconvolution' must all be in checks
 plots_to_make: ['passband', 'beams', 'maps_before_beam', 'freq_maps_no_beam', 
-              'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra',
-              'mask_deconvolved_comp_spectra']
+              'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra']

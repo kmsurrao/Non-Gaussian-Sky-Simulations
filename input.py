@@ -26,8 +26,8 @@ class Info(object):
         if self.ellmax:
             assert type(self.ellmax) is int and self.ellmax >= 2, "ellmax must be integer >= 2"
             assert self.ellmax <= 3*self.nside-1, "ellmax must be less than 3*nside-1"
-        self.ells_per_bin = p['ells_per_bin']
-        if self.ells_per_bin:
+        if 'ells_per_bin' in p:
+            self.ells_per_bin = p['ells_per_bin']
             assert type(self.ells_per_bin) is int and 1 <= self.ells_per_bin <= self.ellmax-2, "ells_per_bin must be int with 1 <= ells_per_bin <= ellmax-2"
         self.galactic_components = p['galactic_components']
         self.pol = p['pol']
@@ -42,13 +42,20 @@ class Info(object):
         if self.ksz_reionization_file:
             assert type(self.ksz_reionization_file) is str, "TypeError: ksz_reionization_file must be str"
             assert os.path.isfile(self.ksz_reionization_file), "ksz_reionization_file does not exist"
-        self.mask_file = p['mask_file']
-        if self.mask_file:
+        if 'mask_file' in p:
+            self.mask_file = p['mask_file']
             assert type(self.mask_file) is str, "TypeError: mask_file must be str"
             assert os.path.isfile(self.mask_file), "mask_file does not exist"
         self.beam_dir = p['beam_dir']
         assert type(self.beam_dir) is str, "TypeError: beam_dir must be str"
         assert os.path.isdir(self.beam_dir), "beam_dir does not exist"
+
+        if 'noise_dir' in p:
+            self.noise_dir = p['noise_dir']
+            assert type(self.noise_dir) is str, "TypeError: noise_dir must be str"
+            assert os.path.isdir(self.noise_dir), "noise_dir does not exist"
+        else:
+            self.noise_dir = None
 
         self.output_dir = p['output_dir']
         assert type(self.output_dir) is str, "TypeError: output_dir must be str"

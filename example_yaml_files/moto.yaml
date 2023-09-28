@@ -40,6 +40,11 @@ mask_file: 'HFI_Mask_GalPlane-apo5_2048_R2.00.fits'
   # i.e., if 'component_mask_deconvolution' or 'freq_map_mask_deconvolution' in checks list
 ells_per_bin: 200 
 
+# directory containing noise simulations (/global/cfs/cdirs/act/data/act_dr6v4/simulations/noise/sims on Perlmutter)
+# only needs to be defined if adding noise to the signal simulations
+# leave as empty string or omit input for noise not to be added
+noise_dir: 'noise_sims'
+
 # list of strings of checks to perform, leave as empty list if not performing checks
 # options are the following:
   # 'component_power_spectra': compute power spectra of individual components
