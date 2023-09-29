@@ -68,7 +68,8 @@ def main():
 
     # add noise if noise_dir provided
     if inp.noise_dir is not None:
-        save_all_noise_added_maps(inp)
+        car_maps = save_all_noise_added_maps(inp)
+        print('Added noise to maps', flush=True)
 
     # make plots
     if len(inp.plots_to_make) > 0:

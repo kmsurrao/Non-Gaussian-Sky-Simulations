@@ -1,21 +1,23 @@
 import numpy as np
-from pixell import enmap, reproject, enplot, utils
+from utils import get_CAR_shape_and_wcs
+from pixell import enmap, reproject, enplot
 import multiprocessing as mp
 
 
-def healpix2CAR(inp, healpix_map):
+
+def healpix2CAR(inp, healpix_map, shape, wcs):
     '''
     ARGUMENTS
     ---------
     inp: Info object containing input parameter specifications
     healpix_map: numpy array, either [I,Q,U] healpix maps if pol, or just one intensity healpix map if not pol
-    
+    shape: 2D array containing shape of CAR map (same as noise maps if adding noise)
+    wcs: wcs pixell object (same as noise maps if adding noise)
+
     RETURNS
     -------
     car_map: ndarray, either [I,Q,U] CAR maps if pol, or just one intensity CAR map if not pol
     '''
-    res = np.pi/inp.ellmax*(180/np.pi)*60.
-    shape, wcs = enmap.fullsky_geometry(res=res * utils.arcmin, proj='car')
     car_map = reproject.healpix2map(healpix_map, shape, wcs, lmax=inp.ellmax, rot="gal,equ")
     return car_map
 
@@ -44,11 +46,10 @@ def get_all_CAR_maps(inp, beam_convolved_maps):
     car_maps = []
     freqs = [220, 150, 90]
 
-    res = np.pi/inp.ellmax*(180/np.pi)*60.
-    shape, wcs = enmap.fullsky_geometry(res=res * utils.arcmin, proj='car')
+    shape, wcs = get_CAR_shape_and_wcs(inp)
 
     pool = mp.Pool(12)
-    results = pool.starmap(healpix2CAR, [(inp, beam_convolved_maps[i//4, i%4]) for i in range(12)])
+    results = pool.starmap(healpix2CAR, [(inp, beam_convolved_maps[i//4, i%4], shape, wcs) for i in range(12)])
     pool.close()
     
     idx = 0

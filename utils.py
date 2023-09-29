@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from pixell import enmap, utils
 
 def plot_histogram(inp, cmap, freq, comp, string='before'):
     '''
@@ -32,3 +33,27 @@ def plot_histogram(inp, cmap, freq, comp, string='before'):
         if not inp.pol:
             break
     return
+
+
+def get_CAR_shape_and_wcs(inp):
+    '''
+    ARGUMENTS
+    ---------
+    inp: Info object containing input parameter specifications
+
+    RETURNS
+    -------
+    shape: 2D array containing shape of CAR map (same as noise maps if adding noise)
+    wcs: wcs pixell object (same as noise maps if adding noise)
+
+    '''
+    if not inp.noise_dir:
+        res = np.pi/inp.ellmax*(180/np.pi)*60.
+        shape, wcs = enmap.fullsky_geometry(res=res * utils.arcmin, proj='car')
+    else:
+        noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set0_noise_sim_map9061021.fits'
+        noise_map = 10**(-6)*enmap.read_map(noise_file)[1,0]
+        if not inp.pol:
+            noise_map = noise_map[0]
+        shape, wcs = noise_map.shape, noise_map.wcs
+    return shape, wcs
