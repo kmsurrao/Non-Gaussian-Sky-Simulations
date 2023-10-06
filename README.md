@@ -16,7 +16,7 @@ NaMaster
 1. Get passbands.  
     - Computed in [bandpass_integration.py](bandpass_integration.py) and saved as all_bandpass_freqs.p and all_bandpass_weights.p.    
 2. Get bandpass-integrated galactic component maps from pysm.  
-    - Computed in [bandpass_integration.py](bandpass_integration.py) and saved as gal_and_extragal_before_beam.p.  
+    - Computed in [bandpass_integration.py](bandpass_integration.py) and saved as maps_before_beam.p.  
 3. Get bandpass-integrated extragalactic component maps from agora simulations, as well as reionization/patchy kSZ. Apply initial flux cut to radio and CIB agora maps by inpainting extremely bright pixels (> 100 mJy).  
     - Computed in [bandpass_integration.py](bandpass_integration.py), [apply_flux_cut.py](apply_flux_cut.py), and [diffusive_inpaint.py](diffusive_inpaint.py), and saved as gal_and_extragal_before_beam.p.
     - NOT IMPLEMENTED: Harmonic transform and apply beam convolution. Transform back to pixel space and apply flux cut mask (> 15 mJy at 150 GHz) with 5 arcmin holes, using inpainting.    
@@ -27,8 +27,10 @@ NaMaster
 6. Optionally compute galactic mask-deconvolved power spectrum of each frequency map.  
     - Computed in [galactic_mask.py](galactic_mask.py) and saved as mask_deconvolved_spectra.p and $\ell$ bins saved in ell_eff.p.    
 7. Reproject from HEALPIX to CAR.  
-    - Computed in [reprojection.py](reprojection.py) and saved as sim_{freq}GHz.  
-8. Make plots. 
+    - Computed in [reprojection.py](reprojection.py) and saved as sim_{freq}GHz.
+8. Add either tiled or stitched noise.  
+   - Computed in [noise.py](noise.py).  
+9. Make plots. 
     - Computed in [make_plots.py](make_plots.py) and saved in plot_dir.  
 
 ## Outputs (not including plots)  

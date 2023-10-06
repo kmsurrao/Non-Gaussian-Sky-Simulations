@@ -23,19 +23,19 @@ def add_noise(inp, freq, split):
         if inp.noise_type == 'tiled':
             noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set{split}_noise_sim_map9061021.fits'
         elif inp.noise_type == 'stitched':
-            noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set{split}_noise_sim_map9061021.fits'
+            noise_file = f'{inp.noise_dir}/act_dr6v4_fdw_cmbmask_4000_prof_cosine_5000_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set{split}_noise_sim_map40294_103094.fits'
         noise_map = 10**(-6)*enmap.read_map(noise_file)[1,0]
     elif freq==150:
         if inp.noise_type == 'tiled':
             noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_pa5_f090_pa5_f150_lmax10800_4way_set{split}_noise_sim_map9061021.fits'
         elif inp.noise_type == 'stitched':
-            noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set{split}_noise_sim_map9061021.fits'
+            noise_file = f'{inp.noise_dir}/act_dr6v4_fdw_cmbmask_4000_prof_cosine_5000_tile_cmbmask_pa5_f090_pa5_f150_lmax10800_4way_set{split}_noise_sim_map40294_103094.fits'
         noise_map = 10**(-6)*enmap.read_map(noise_file)[1,0]
     elif freq==90:
         if inp.noise_type == 'tiled':
             noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_ivfwhm2_pa6_f090_pa6_f150_lmax10800_4way_set{split}_noise_sim_map9061021.fits'
         elif inp.noise_type == 'stitched':
-            noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set{split}_noise_sim_map9061021.fits'
+            noise_file = f'{inp.noise_dir}/act_dr6v4_fdw_cmbmask_ivfwhm2_4000_prof_cosine_5000_tile_cmbmask_ivfwhm2_pa6_f090_pa6_f150_lmax10800_4way_set{split}_noise_sim_map40294_103094.fits'
         noise_map = 10**(-6)*enmap.read_map(noise_file)[0,0]
     
     if not inp.pol:

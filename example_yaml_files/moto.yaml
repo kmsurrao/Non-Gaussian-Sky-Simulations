@@ -10,7 +10,7 @@ galactic_components: ['d10', 's5', 'a1', 'f1']
 # whether or not to compute polarization maps 
 # set to zero to produce temperature maps only, 
 # set to nonzero value to produce both temperature and polarization maps (T,Q,U)
-pol: 0
+pol: 1
 
 # file containing ACT passband information
 passband_file: 'passbands_20220316/AdvACT_Passbands.h5' 
