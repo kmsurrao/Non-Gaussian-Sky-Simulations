@@ -1,5 +1,5 @@
 # Non-Gaussian-Sky-Simulations
-Generation of bandpass-integrated, beam-convolved full-sky non-Gaussian simulations for ACT likelihood validation 
+Generation of bandpass-integrated, beam-convolved non-Gaussian simulations for ACT DR6 likelihood validation 
 
 ## Running
 Create or modify one of the yaml files in the example_yaml_files directory.  

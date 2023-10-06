@@ -56,6 +56,10 @@ class Info(object):
             assert os.path.isdir(self.noise_dir), "noise_dir does not exist"
         else:
             self.noise_dir = None
+        if 'noise_type' in p:
+            self.noise_type = p['noise_type']
+            assert self.noise_dir is not None, "noise_dir must be defined to add noise of type noise_type"
+            assert self.noise_type in {'tiled', 'stitched'}, "noise_type must be either 'tiled' or 'stitched'"
 
         self.output_dir = p['output_dir']
         assert type(self.output_dir) is str, "TypeError: output_dir must be str"
@@ -76,10 +80,10 @@ class Info(object):
             return
         if not self.plot_dir:
             assert not self.plots_to_make, "Must define plot_dir if plots_to_make is not an emptry list"
-        assert set(self.plots_to_make).issubset({'passband', 'beams', 'maps_before_beam', 'freq_maps_no_beam', 
+        assert set(self.plots_to_make).issubset({'passband', 'beams', 'freq_maps_no_beam', 
               'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra',
               'mask_deconvolved_comp_spectra'}), \
-              "plots_to_make must be a subset of 'passband', 'beams', 'maps_before_beam', 'freq_maps_no_beam', 'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra', 'mask_deconvolved_comp_spectra'"
+              "plots_to_make must be a subset of 'passband', 'beams', 'freq_maps_no_beam', 'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra', 'mask_deconvolved_comp_spectra'"
         if 'mask_deconvolved_spectra' in self.plots_to_make or 'mask_deconvolved_comp_spectra' in self.plots_to_make:
             assert self.ells_per_bin is not None and self.mask_file is not None, "mask_file and ells_per_bin must be defined to plot mask-deconvolved spectra"
         if self.plots_to_make == 'all' or 'all_comp_spectra' in self.plots_to_make:

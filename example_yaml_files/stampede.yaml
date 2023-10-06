@@ -45,6 +45,11 @@ ells_per_bin: 200
 # leave as empty string or omit input for noise not to be added
 noise_dir: '/scratch/09334/ksurrao/ACT_sims/noise_sims'
 
+# type of noise simulation to add
+# only needs to be defined if adding noise to the signal simulations
+# options are 'tiled' or 'stitched'
+noise_type: 'tiled'
+
 # list of strings of checks to perform, leave as empty list if not performing checks
 # options are the following:
   # 'component_power_spectra': compute power spectra of individual components
@@ -57,7 +62,6 @@ checks: ['component_power_spectra', 'component_mask_deconvolution',
 # options are the following:
   # 'passband': make plots of passbands 
   # 'beams': plots of coadd beams for each frequency
-  # 'maps_before_beam': plot maps before beam convolution
   # 'freq_maps_no_beam': plot healpix frequency maps before applying beam
   # 'beam_convolved_maps': plot healpix beam-convolved frequency maps
   # 'CAR_maps': plot CAR beam-convolved frequency maps
@@ -66,6 +70,6 @@ checks: ['component_power_spectra', 'component_mask_deconvolution',
   # 'mask_deconvolved_comp_spectra': compute, save, and plot galactic-mask deconvolved spectrum of each component; 'component_mask_deconvolution' must be in checks
 # can alternatively set to single string 'all' to make all plots, in which case
 # 'component_power_spectra', 'component_mask_deconvolution', and 'freq_map_mask_deconvolution' must all be in checks
-plots_to_make: ['passband', 'beams', 'maps_before_beam', 'freq_maps_no_beam', 
+plots_to_make: ['passband', 'beams', 'freq_maps_no_beam', 
               'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra',
               'mask_deconvolved_comp_spectra']

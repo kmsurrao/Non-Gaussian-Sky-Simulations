@@ -49,7 +49,7 @@ def main():
         print('Computed coupling matrix for mask deconvolution', flush=True)
 
     # get galactic and extragalactic component maps
-    all_maps = get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=[220, 150, 90], all_bandpass_weights=all_bandpass_weights)
+    all_maps = get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=[220, 150, 90], all_bandpass_weights=all_bandpass_weights, parallel=False)
     pickle.dump(all_maps, open(f'{inp.output_dir}/maps_before_beam.p', 'wb'), protocol=4)
     print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
     

@@ -232,6 +232,10 @@ def combined_map_before_beam(inp, bandpass_freqs, central_freq=None, bandpass_we
     
     RETURNS
     -------
+    None
+
+    SAVES
+    -----
     combined_map: ndarray containing bandpass integrated map of all galactic and
         extragalactic components in healpix format
         if pol: combined_map has shape (3 for IQU, Npix)
@@ -240,11 +244,13 @@ def combined_map_before_beam(inp, bandpass_freqs, central_freq=None, bandpass_we
     gal_comps = get_galactic_comp_maps(inp, bandpass_freqs, central_freq=central_freq, bandpass_weights=bandpass_weights)
     extragal_comps = get_extragalactic_comp_maps(inp, central_freq, plot_hist=True)
     combined_map = gal_comps + extragal_comps
-    return combined_map
+    combined_map = np.array(combined_map, dtype=np.float32)
+    pickle.dump(combined_map, open(f'{inp.output_dir}/combined_map_{central_freq}.p', 'wb'), protocol=4)
+    return None
 
 
 
-def get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=None, all_bandpass_weights=None):
+def get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=None, all_bandpass_weights=None, parallel=True):
     '''
     ARGUMENTS
     ---------
@@ -255,18 +261,28 @@ def get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=None, all
         frequencies (in GHz)
     all_bandpass_weights: (Nfreqs, Nfreqs_in_passband) ndarray of weights for each 
         frequency in the passband 
+    parallel: Bool, whether to run in parallel (may cause memory issues if nside too high)
     
     RETURNS
     -------
     all_maps: ndarray containing bandpass integrated maps of 
         all galactic and extragalactic combined maps in healpix format
-        if pol: all_maps has shape (3 for IQU, Npix)
-        if not pol: all_maps has shape (Npix,)
+        if pol: all_maps has shape (Nfreqs, 3 for IQU, Npix)
+        if not pol: all_maps has shape (Nfreqs, Npix)
     '''
     plot_hist = True if inp.plot_dir else False
-    pool = mp.Pool(3)
-    all_maps = pool.starmap(combined_map_before_beam, [(inp, all_bandpass_freqs[i], all_central_freqs[i], all_bandpass_weights[i], plot_hist) for i in range(3)])
-    pool.close()
-    all_maps = np.array(all_maps, dtype=np.float32)
-    plt.close('all')
+    if parallel:
+        pool = mp.Pool(3)
+        tmp = pool.starmap(combined_map_before_beam, [(inp, all_bandpass_freqs[i], all_central_freqs[i], all_bandpass_weights[i], plot_hist) for i in range(3)])
+        pool.close()
+        plt.close('all')
+    else:
+        for i in range(3):
+            combined_map_before_beam(inp, all_bandpass_freqs[i], all_central_freqs[i], all_bandpass_weights[i], plot_hist)
+    if inp.pol:
+        all_maps = np.zeros((3, 3, 12*inp.nside**2), dtype=np.float32)
+    else:
+        all_maps = np.zeros((3, 12*inp.nside**2), dtype=np.float32)
+    for i, freq in enumerate(all_central_freqs):
+        all_maps[i] = pickle.load(open(f'{inp.output_dir}/combined_map_{freq}.p', 'rb'))
     return all_maps

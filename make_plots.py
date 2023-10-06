@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 from pixell import enmap, enplot, curvedsky
 from galactic_mask import plot_and_save_mask_deconvolved_spectra
 
-def plot_outputs(inp):
+def plot_outputs(inp, save=True):
     '''
     Produces and saves plots of various outputs 
 
     ARGUMENTS
     ---------
     inp: Info object containing input parameter specifications
+    save: Bool, whether to save power spectra that are not already saved
 
     RETURNS
     -------
@@ -126,11 +127,19 @@ def plot_outputs(inp):
                 plt.title(f'{spectra_types[t]}')
                 if t <= 2:
                     plt.yscale('log')
+                elif t==3:
+                    plt.ylim(-0.02e-8, 0.02e-8)
+                elif t==4:
+                    plt.ylim(-0.02e-10, 0.02e-10)
+                elif t==5:
+                    plt.ylim(-0.02e-9, 0.02e-9)
             plt.legend()
             plt.tight_layout()
             plt.savefig(f'{inp.plot_dir}/no_beam_power_spectra.png')
             print(f'saved {inp.plot_dir}/no_beam_power_spectra.png', flush=True)
         plt.close('all')
+        if save:
+            pickle.dump(spectra_no_beam, open(f'{inp.output_dir}/spectra_no_beam.p', 'wb'))
 
 
 
@@ -169,6 +178,7 @@ def plot_outputs(inp):
             plt.xlabel(r'$\ell$')
             plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
             plt.yscale('log')
+            plt.xlim(2, inp.ellmax)
             plt.grid()
             plt.legend()
             plt.savefig(f'{inp.plot_dir}/beam_convolved_map_power_spectra.png')
@@ -189,12 +199,21 @@ def plot_outputs(inp):
                 plt.title(f'{spectra_types[t]}')
                 if t <= 2:
                     plt.yscale('log')
+                elif t==3:
+                    plt.ylim(-0.02e-8, 0.02e-8)
+                elif t==4:
+                    plt.ylim(-0.02e-10, 0.02e-10)
+                elif t==5:
+                    plt.ylim(-0.02e-9, 0.02e-9)
+                plt.xlim(2, inp.ellmax)
             handles, labels = axs[-1].get_legend_handles_labels()
             fig.legend(handles, labels, fontsize=12, bbox_to_anchor=(1.0, 0.), ncol=3)
             plt.tight_layout()
             plt.savefig(f'{inp.plot_dir}/beam_convolved_map_power_spectra.png')
             print(f'saved {inp.plot_dir}/beam_convolved_map_power_spectra.png', flush=True)
-            plt.close('all')
+        plt.close('all')
+        if save:
+            pickle.dump(beam_convolved_spectra, open(f'{inp.output_dir}/beam_convolved_spectra.p', 'wb'))
 
 
     #Final CAR Maps and Power Spectra
@@ -214,15 +233,19 @@ def plot_outputs(inp):
                         break
         plt.clf()
         if not inp.pol:
+            CAR_spectra = np.zeros((3, inp.ellmax+1), dtype=np.float32)
+        else:
+            CAR_spectra = np.zeros((3, 6, inp.ellmax+1), dtype=np.float32)
+        if not inp.pol:
             for i, freq in enumerate([220, 150, 90]):
-                for split in range(4):
-                    map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split{split}')
-                    alm = curvedsky.map2alm(map_, lmax=inp.ellmax)
-                    if not inp.pol:
-                        cl = curvedsky.alm2cl(alm)
-                        plt.plot(ells, ells*(ells+1)/2/np.pi*cl[0], label=f'{freq} GHz')
+                map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split0')
+                alm = curvedsky.map2alm(map_, lmax=inp.ellmax)
+                cl = curvedsky.alm2cl(alm)
+                CAR_spectra[i] = cl[0]
+                plt.plot(ells, to_dl*cl[0], label=f'{freq} GHz')
             plt.xlabel(r'$\ell$')
             plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+            plt.xlim(2, inp.ellmax)
             plt.grid()
             plt.legend()
             plt.savefig(f'{inp.plot_dir}/CAR_beam_power_spectra.png')
@@ -232,29 +255,41 @@ def plot_outputs(inp):
             fig, axs = plt.subplots(2, 3, figsize=(9,6))
             axs = axs.flatten()
             spectra_types_here = ['T', 'E', 'B']
+            axis_mapping = {(0,0):0, (0,1):3, (0,2):5, (1,1):1, (1,2):4, (2,2):2}
             for i, freq in enumerate([220, 150, 90]):
-                for split in range(4):
-                    map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split{split}')
-                    alm = curvedsky.map2alm(map_, lmax=inp.ellmax)
-                    cl = curvedsky.alm2cl(alm[:,None,:], alm[None,:,:])
-                    ax = 0
-                    for t1 in range(3):
-                        for t2 in range(t1,3):
-                            plt.axes(axs[ax])
-                            ax += 1
-                            plt.plot(ells[2:], (to_dl*cl[t1,t2])[2:], label=f'{freq} GHz Split {split}', color=colors[i], linestyle=linestyles[split])
-                            plt.title(f'{spectra_types_here[t1]}{spectra_types_here[t2]}')
-                            plt.xlabel(r'$\ell$')
-                            plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
-                            plt.grid()
-                            if t1==t2:
-                                plt.yscale('log')
+                map_ = enmap.read_map(f'{inp.output_dir}/sim_{freq}GHz_split0')
+                alm = curvedsky.map2alm(map_, lmax=inp.ellmax)
+                cl = curvedsky.alm2cl(alm[:,None,:], alm[None,:,:])
+                ax = 0
+                for t1 in range(3):
+                    for t2 in range(t1,3):
+                        t = axis_mapping[(t1,t2)]
+                        plt.axes(axs[t])
+                        CAR_spectra[i, ax] = cl[t1,t2]
+                        ax += 1
+                        plt.plot(ells[2:], (to_dl*cl[t1,t2])[2:], label=f'{freq} GHz', color=colors[i])
+                        plt.title(f'{spectra_types_here[t1]}{spectra_types_here[t2]}')
+                        plt.xlabel(r'$\ell$')
+                        plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
+                        plt.grid()
+                        plt.xlim(2, inp.ellmax)
+                        if t <= 2:
+                            plt.yscale('log')
+                        elif t==3:
+                            plt.ylim(-0.08e-8, 0.08e-8)
+                        elif t==4:
+                            plt.ylim(-0.01e-7, 0.01e-7)
+                        elif t==5:
+                            plt.ylim(-0.01e-7, 0.01e-7)
+                        plt.xscale('log')
             handles, labels = axs[-1].get_legend_handles_labels()
             fig.legend(handles, labels, fontsize=12, bbox_to_anchor=(1.0, 0.), ncol=3)
             plt.tight_layout()
             plt.savefig(f'{inp.plot_dir}/CAR_beam_power_spectra.png')
             print(f'saved {inp.plot_dir}/CAR_beam_power_spectra.png', flush=True)
         plt.close('all')
+        if save:
+            pickle.dump(CAR_spectra, open(f'{inp.output_dir}/CAR_spectra.p', 'wb'))
     
 
     #Power Spectra of all Components
@@ -277,6 +312,7 @@ def plot_outputs(inp):
                 plt.xlabel(r'$\ell$')
                 plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
                 plt.grid()
+                plt.xlim(2, inp.ellmax)
                 plt.legend()
                 plt.savefig(f'{inp.plot_dir}/all_comp_spectra_{freq}.png')
                 print(f'saved {inp.plot_dir}/all_comp_spectra_{freq}.png', flush=True)
@@ -292,9 +328,17 @@ def plot_outputs(inp):
                         plt.plot(ells[2:], (to_dl*extragal_spectra[c,m])[2:], label=extragal_comps[c])
                     if m < 3:
                         plt.yscale('log')
+                    ylims = [0.01e-8, 0.02e-8, 0.03e-8]
+                    if m==3:
+                        plt.ylim(-ylims[i], ylims[i])
+                    elif m==4:
+                        plt.ylim(-ylims[i]*10**(-2), ylims[i]*10**(-2))
+                    elif m==5:
+                        plt.ylim(-ylims[i]*10**(-1), ylims[i]*10**(-1))
                     plt.xlabel(r'$\ell$')
                     plt.ylabel(r'$D_\ell$ [$\mathrm{K}^2$]')
                     plt.grid()
+                    plt.xlim(2, inp.ellmax)
                     plt.title(f'{modes[m]}')
                 handles, labels = axs[-1].get_legend_handles_labels()
                 fig.legend(handles, labels, fontsize=12, bbox_to_anchor=(1.0, 0.), ncol=3)
