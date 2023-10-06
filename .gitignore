@@ -1,3 +1,4 @@
+example_yaml_files/laptop.yaml
 *.ipynb
 outputs*/*
 plots*/*

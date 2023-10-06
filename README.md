@@ -18,8 +18,8 @@ NaMaster
 2. Get bandpass-integrated galactic component maps from pysm.  
     - Computed in [bandpass_integration.py](bandpass_integration.py) and saved as maps_before_beam.p.  
 3. Get bandpass-integrated extragalactic component maps from agora simulations, as well as reionization/patchy kSZ. Apply initial flux cut to radio and CIB agora maps by inpainting extremely bright pixels (> 100 mJy).  
-    - Computed in [bandpass_integration.py](bandpass_integration.py), [apply_flux_cut.py](apply_flux_cut.py), and [diffusive_inpaint.py](diffusive_inpaint.py), and saved as gal_and_extragal_before_beam.p.
-    - NOT IMPLEMENTED: Harmonic transform and apply beam convolution. Transform back to pixel space and apply flux cut mask (> 15 mJy at 150 GHz) with 5 arcmin holes, using inpainting.    
+    - Computed in [bandpass_integration.py](bandpass_integration.py), [apply_flux_cut.py](apply_flux_cut.py), and [diffusive_inpaint.py](diffusive_inpaint.py), and saved as maps_before_beam.p.
+    - NOT IMPLEMENTED: Source subtraction. Harmonic transform and apply beam convolution. Transform back to pixel space and apply flux cut mask (> 15 mJy at 150 GHz) with 5 arcmin holes, using inpainting.    
 4. Optionally compute power spectra and galactic mask-deconvolved power spectrum of each component.
     - Computed in [bandpass_integration.py](bandpass_integration.py) and [galactic_mask.py](galactic_mask.py) and saved as gal_comp_spectra_{central_freq}.p and gal_comp_mask_deconvolved_spectra_{central_freq}.p.  
 5. Apply beams to frequency maps. 
