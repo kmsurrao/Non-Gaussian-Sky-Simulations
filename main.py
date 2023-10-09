@@ -54,7 +54,8 @@ def main():
     print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
     
     # get beam-convolved healpix maps at each frequency
-    beam_convolved_maps = get_all_beam_convolved_maps(inp, all_maps)
+    parallel = True if inp.nside <= 2048 else False
+    beam_convolved_maps = get_all_beam_convolved_maps(inp, all_maps, parallel=parallel)
     pickle.dump(beam_convolved_maps, open(f'{inp.output_dir}/beam_convolved_maps.p', 'wb'), protocol=4)
     print('Got beam-convolved maps', flush=True)
 

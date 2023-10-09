@@ -26,7 +26,7 @@ def apply_beam(map_, beamfile, pol):
 
 
 
-def get_all_beam_convolved_maps(inp, all_maps):
+def get_all_beam_convolved_maps(inp, all_maps, parallel):
     '''
     ARGUMENTS
     ---------
@@ -34,7 +34,8 @@ def get_all_beam_convolved_maps(inp, all_maps):
     all_maps: ndarray of shape (Nfreqs, Npix), 
              if not pol, or shape (Nfreqs, 3 for I/Q/U, Npix) if pol
              contains healpix maps of galactic and extragalactic components before beam convolution
-    
+    parallel: Bool, whether to run in parallel (can cause memory issues for large maps)
+             
     RETURNS
     -------
     beam_convolved_maps: ndarray of shape (Nfreqs, Nsplits, Npix) if not pol,
@@ -54,10 +55,15 @@ def get_all_beam_convolved_maps(inp, all_maps):
                 beamfile = f'{inp.beam_dir}/set{split}_pa6_f090_night_beam_tform_jitter_cmb.txt'
             beamfiles.append(beamfile)
     
-    pool = mp.Pool(12)
-    results = pool.starmap(apply_beam, [(freq_maps[i//4], beamfiles[i], inp.pol) for i in range(12)])
-    pool.close()
-    results = np.array(results, dtype=np.float32)
+    if parallel:
+        pool = mp.Pool(12)
+        results = pool.starmap(apply_beam, [(freq_maps[i//4], beamfiles[i], inp.pol) for i in range(12)])
+        pool.close()
+        results = np.array(results, dtype=np.float32)
+    else:
+        results = []
+        for i in range(12):
+            results.append(apply_beam(freq_maps[i//4], beamfiles[i], inp.pol))
 
     if not inp.pol: #index as all_maps[freq, split, pixel], freqs in decreasing order
         beam_convolved_maps = np.reshape(results, (3, 4, 12*inp.nside**2))
