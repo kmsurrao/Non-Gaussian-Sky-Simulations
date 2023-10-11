@@ -29,12 +29,12 @@ def compute_coupling_matrices_CAR(inp, wcs, mask):
     '''
     inp.wsp_car = nmt.NmtWorkspace()
     inp.b = nmt.NmtBin.from_lmax_linear(inp.ellmax, inp.ells_per_bin, is_Dell=True)
-    f_tmp = nmt.NmtField(mask, [mask])
+    f_tmp = nmt.NmtField(mask, [mask], wcs=wcs)
     inp.wsp_car.compute_coupling_matrix(f_tmp, f_tmp, inp.b)
     if inp.pol:
         inp.wsp2_car = nmt.NmtWorkspace() #temperature x pol
         inp.wsp3_car = nmt.NmtWorkspace() #pol x pol
-        f_tmp_pol = nmt.NmtField(mask, [mask, mask])
+        f_tmp_pol = nmt.NmtField(mask, [mask, mask], wcs=wcs)
         inp.wsp2_car.compute_coupling_matrix(f_tmp, f_tmp_pol, inp.b)
         inp.wsp3_car.compute_coupling_matrix(f_tmp_pol, f_tmp_pol, inp.b)
     return 
@@ -44,7 +44,7 @@ def main():
 
     # main input file containing most specifications 
     parser = argparse.ArgumentParser(description="Non-gaussian full sky simulations.")
-    parser.add_argument("--config", default="example_yaml_files/stampede.yaml")
+    parser.add_argument("--config", default="../example_yaml_files/moto.yaml")
     args = parser.parse_args()
     input_file = args.config
 
@@ -71,21 +71,21 @@ def main():
     print('act_mask_90 wcs: ', act_mask_90.wcs, flush=True)
     print('act_mask_220 shape: ', act_mask_220.shape, flush=True)
 
-    # get CAR shape and wcs and compute coupling matrices
+    # get CAR shape and wcs
     shape, wcs = get_CAR_shape_and_wcs(inp)
     print('noise map wcs: ', wcs, flush=True)
     print('noise map shape: ', shape, flush=True)
-    compute_coupling_matrices_CAR(inp)
     print('Computed coupling matrix for mask deconvolution', flush=True)
 
     # compute and save all mask-deconvolved spectra
-    if inp.pol:
-        workspace = [inp.wsp_car, inp.wsp2_car, inp.wsp3_car]
-    else:
-        workspace = inp.wsp_car
     freqs = [220, 150, 90]
     spectra = []
     for i, mask in enumerate([act_mask_220, act_mask_150, act_mask_90]):
+        compute_coupling_matrices_CAR(inp, wcs, mask)
+        if inp.pol:
+            workspace = [inp.wsp_car, inp.wsp2_car, inp.wsp3_car]
+        else:
+            workspace = inp.wsp_car
         map1 = enmap.read_map(f'{inp.output_dir}/sim_{freqs[i]}GHz_split0')
         ell_eff, Cl = compute_master(inp, mask, map1, wcs=wcs, workspace=workspace)
         pickle.dump(Cl, open(f'{inp.output_dir}/CAR_mask_deconvolved_spectra_{freqs[i]}.p', 'wb'))
