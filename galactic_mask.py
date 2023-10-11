@@ -12,7 +12,7 @@ def compute_coupling_matrices(inp):
 
     RETURNS
     -------
-    None (modified inp in-place)
+    None (modifies inp in-place)
     '''
     inp.wsp = nmt.NmtWorkspace()
     inp.b = nmt.NmtBin.from_lmax_linear(inp.ellmax, inp.ells_per_bin, is_Dell=True)
@@ -28,7 +28,7 @@ def compute_coupling_matrices(inp):
         inp.wsp3.compute_coupling_matrix(f_tmp_pol, f_tmp_pol, inp.b)
     return
 
-def compute_master(inp, mask, map1, map2=None):
+def compute_master(inp, mask, map1, map2=None, wcs=None, workspace=None):
     '''
     Use this function to compute mask-deconvolved spectra if computing them multiple times
     with the same mask
@@ -40,6 +40,9 @@ def compute_master(inp, mask, map1, map2=None):
         for which the coupling matrix has already been compupted
     f_a: NaMaster field object for first field
     f_b: NaMaster field object for second field
+    wcs: wcs pixell object
+    workspace: NaMaster workspace object or list of 3 NaMaster 
+            workspace objects if computing polarization spectra as well
 
     RETURNS
     -------
@@ -53,11 +56,21 @@ def compute_master(inp, mask, map1, map2=None):
         map1_T, map2_T = map1[0], map2[0]
     else:
         map1_T, map2_T = map1, map2
+    
+    if workspace is None:
+        wsp = inp.wsp
+        if inp.pol:
+            wsp2, wsp3 = inp.wsp2, inp.wsp3
+    else:
+        if inp.pol:
+            wsp, wsp2, wsp3 = workspace
+        else:
+            wsp = workspace
 
-    f_a = nmt.NmtField(mask, [map1_T])
-    f_b = nmt.NmtField(mask, [map2_T])
+    f_a = nmt.NmtField(mask, [map1_T], wcs=wcs)
+    f_b = nmt.NmtField(mask, [map2_T], wcs=wcs)
     dl_coupled = nmt.compute_coupled_cell(f_a, f_b)
-    dl_decoupled = inp.wsp.decouple_cell(dl_coupled)
+    dl_decoupled = wsp.decouple_cell(dl_coupled)
     
     ell_arr =inp.b.get_effective_ells()
     to_dl = ell_arr*(ell_arr+1)/2/np.pi
@@ -66,15 +79,15 @@ def compute_master(inp, mask, map1, map2=None):
     if not inp.pol:
         return ell_arr, cl_decoupled[0]
     
-    f_a_pol = nmt.NmtField(mask, map1[1:])
-    f_b_pol = nmt.NmtField(mask, map2[1:])
+    f_a_pol = nmt.NmtField(mask, map1[1:], wcs=wcs)
+    f_b_pol = nmt.NmtField(mask, map2[1:], wcs=wcs)
 
     dl_coupled_tempxpol = nmt.compute_coupled_cell(f_a, f_b_pol)
-    dl_decoupled_tempxpol = inp.wsp2.decouple_cell(dl_coupled_tempxpol)
+    dl_decoupled_tempxpol = wsp2.decouple_cell(dl_coupled_tempxpol)
     cl_decoupled_tempxpol = dl_decoupled_tempxpol/np.tile(to_dl, (2,1))
 
     dl_coupled_pol = nmt.compute_coupled_cell(f_a_pol, f_b_pol)
-    dl_decoupled_pol = inp.wsp3.decouple_cell(dl_coupled_pol)
+    dl_decoupled_pol = wsp3.decouple_cell(dl_coupled_pol)
     cl_decoupled_pol = dl_decoupled_pol/np.tile(to_dl, (4,1))
 
     TT = cl_decoupled[0]
