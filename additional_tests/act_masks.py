@@ -82,6 +82,7 @@ def main():
     spectra = []
     for i, mask in enumerate([act_mask_220, act_mask_150, act_mask_90]):
         compute_coupling_matrices_CAR(inp, wcs, mask)
+        print(f'computed coupling matrices for {freqs[i]} GHz', flush=True)
         if inp.pol:
             workspace = [inp.wsp_car, inp.wsp2_car, inp.wsp3_car]
         else:

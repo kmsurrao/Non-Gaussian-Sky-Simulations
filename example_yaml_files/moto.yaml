@@ -55,8 +55,7 @@ noise_type: 'tiled'
   # 'component_power_spectra': compute power spectra of individual components
   # 'component_mask_deconvolution':, compute power spectra of individual galactic mask-deconovolved components
   # 'freq_map_mask_deconvolution': compute power spectra of galactic mask-deconvolved frequency maps
-checks: ['component_power_spectra', 'component_mask_deconvolution', 
-                      'freq_map_mask_deconvolution']
+checks: ['component_power_spectra']
 
 # list of strings of which plots to make, leave as empty list if not plotting
 # options are the following:
@@ -71,5 +70,4 @@ checks: ['component_power_spectra', 'component_mask_deconvolution',
 # can alternatively set to single string 'all' to make all plots, in which case
 # 'component_power_spectra', 'component_mask_deconvolution', and 'freq_map_mask_deconvolution' must all be in checks
 plots_to_make: ['passband', 'beams', 'freq_maps_no_beam', 
-              'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra', 'mask_deconvolved_spectra',
-              'mask_deconvolved_comp_spectra']
+              'beam_convolved_maps', 'CAR_maps', 'all_comp_spectra']

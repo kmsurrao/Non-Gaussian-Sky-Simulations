@@ -8,6 +8,7 @@ from beams import get_all_beam_convolved_maps
 from reprojection import get_all_CAR_maps
 from make_plots import plot_outputs
 from galactic_mask import compute_coupling_matrices, plot_and_save_mask_deconvolved_spectra
+from rotation import get_all_rotated_maps
 from noise import save_all_noise_added_maps
 
 def main():
@@ -63,8 +64,12 @@ def main():
     if 'freq_map_mask_deconvolution' in inp.checks:
         plot_and_save_mask_deconvolved_spectra(inp, beam_convolved_maps, save_only=True)
 
+    # rotate beam-convolved healpix maps from galactic to equatorial coordinates
+    rotated_maps = get_all_rotated_maps(inp, beam_convolved_maps, parallel=True)
+    pickle.dump(rotated_maps, open(f'{inp.output_dir}/rotated_healpix_maps.p', 'wb'), protocol=4)
+
     # convert each frequency map from healpix to CAR
-    car_maps = get_all_CAR_maps(inp, beam_convolved_maps)
+    car_maps = get_all_CAR_maps(inp, rotated_maps)
     print('Got CAR maps', flush=True)
 
     # add noise if noise_dir provided
