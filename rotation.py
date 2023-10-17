@@ -20,7 +20,7 @@ def rotate_healpix(map_, ellmax):
     nside = hp.get_nside(map_)
     alm = hp.map2alm(map_, lmax=ellmax)
     rot_gal2eq = hp.Rotator(coord="GC") # C stands for celestial=equatorial
-    alm_rotated = rot_gal2eq.rotate_map_alms(alm, lmax=ellmax)
+    alm_rotated = rot_gal2eq.rotate_alm(alm, lmax=ellmax)
     map_rotated = hp.alm2map(alm_rotated, nside)
     return map_rotated
 

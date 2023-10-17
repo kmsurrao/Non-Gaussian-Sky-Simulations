@@ -25,12 +25,14 @@ NaMaster
 5. Apply beams to frequency maps. 
     - Computed in [beams.py](beams.py) and saved as beam_convolved_maps.p.  
 6. Optionally compute galactic mask-deconvolved power spectrum of each frequency map.  
-    - Computed in [galactic_mask.py](galactic_mask.py) and saved as mask_deconvolved_spectra.p and $\ell$ bins saved in ell_eff.p.    
-7. Reproject from HEALPIX to CAR.  
+    - Computed in [galactic_mask.py](galactic_mask.py) and saved as mask_deconvolved_spectra.p and $\ell$ bins saved in ell_eff.p. 
+7. Rotate from galactic to equatorial (celestial) coordinates.  
+    - Computed in [rotation.py](rotation.py) and saved as rotated_healpix_maps.p.  
+8. Reproject from HEALPIX to CAR.  
     - Computed in [reprojection.py](reprojection.py) and saved as sim_{freq}GHz.
-8. Add either tiled or stitched noise.  
+9. Add either tiled or stitched noise.  
    - Computed in [noise.py](noise.py).  
-9. Make plots. 
+10. Make plots. 
     - Computed in [make_plots.py](make_plots.py) and saved in plot_dir.  
 
 ## Outputs (not including plots)  
@@ -42,14 +44,16 @@ The following outputs are saved in the output directory listed in the yaml file:
 3. maps_before_beam.p  
     - numpy array containing galactic and extragalactic component maps in healpix format before beam convolution. If generating polarized maps, maps_before_beam has shape (Nfreqs, 3 for I/Q/U, Npix), where freqs are indexed in decreasing order. If generating only a temperature map, maps_before_beam has shape (Nfreqs, Npix).  
 4. beam_convolved_maps.p  
-    - numpy array containing beam-convolved maps in healpix format. If generating polarized maps, beam_convolved_maps has shape (Nfreqs, Nsplits, 3 for I/Q,U, Npix). Otherwise, has shape (Nfreqs, Nsplits, Npix).  
-5. sim_{freq}GHz_split{split}  
+    - numpy array containing beam-convolved maps in healpix format (galactic coordinates). If generating polarized maps, beam_convolved_maps has shape (Nfreqs, Nsplits, 3 for I/Q,U, Npix). Otherwise, has shape (Nfreqs, Nsplits, Npix). 
+5. rotated_healpix_maps.p  
+    - numpy array containing beam-convolved maps in healpix format, after rotating from galactic to equatorial (celestial) coordinates. If generating polarized maps, rotated_healpix_maps has shape (Nfreqs, Nsplits, 3 for I/Q,U, Npix). Otherwise, has shape (Nfreqs, Nsplits, Npix).  
+6. sim_{freq}GHz_split{split}  
     - final CAR maps
-6. (Optional) gal_comp_spectra_{central_freq}.p and extragal_comp_spectra_{central_freq}.p  
+7. (Optional) gal_comp_spectra_{central_freq}.p and extragal_comp_spectra_{central_freq}.p  
     - numpy array containing power spectrum of each galactic component at central_freq. If generating polarized maps, has shape (N_(extra)galactic_comps, 6, $\ell_{\mathrm{max}}$), where 6 is for TT, EE, BB, TE, EB, TE. If only generating temparature maps, has shape (N_(extra)galactic_comps, $\ell_{\mathrm{max}}$).  
-7. (Optional) ell_eff.p  
+8. (Optional) ell_eff.p  
     - numpy array containing central $\ell$ values in each bin used for mask deconvolution.  
-8. (Optional) gal_comp_mask_deconvolved_spectra_{central_freq}.p  
+9. (Optional) gal_comp_mask_deconvolved_spectra_{central_freq}.p  
     - numpy array containing Planck 70% fsky galactic mask-deconvolved power spectrum of each galactic component at central_freq. If generating polarized maps, has shape (N_galactic_components, 6, Nbins), where 6 is for TT, EE, BB, TE, EB, TE, and Nbins is the number of values in ell_eff. If generating only temperature maps, has shape (N_galactic_components, Nbins).  
-9. (Optional) mask_deconvolved_spectra.p  
+10. (Optional) mask_deconvolved_spectra.p  
     - numpy array containing Planck 70% fsky galactic mask-deconvolved power spectrum of each frequency map containing all galactic and extragalactic components. If generating polarized maps, has shape (Nfreqs, 6, Nbins), where 6 is for TT, EE, BB, TE, EB, TE, and Nbins is the number of values in ell_eff. If generating only temperature maps, has shape (Nfreqs, Nbins).  

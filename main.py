@@ -65,8 +65,9 @@ def main():
         plot_and_save_mask_deconvolved_spectra(inp, beam_convolved_maps, save_only=True)
 
     # rotate beam-convolved healpix maps from galactic to equatorial coordinates
-    rotated_maps = get_all_rotated_maps(inp, beam_convolved_maps, parallel=True)
+    rotated_maps = get_all_rotated_maps(inp, beam_convolved_maps, parallel=parallel)
     pickle.dump(rotated_maps, open(f'{inp.output_dir}/rotated_healpix_maps.p', 'wb'), protocol=4)
+    print('Got rotated maps', flush=True)
 
     # convert each frequency map from healpix to CAR
     car_maps = get_all_CAR_maps(inp, rotated_maps)
