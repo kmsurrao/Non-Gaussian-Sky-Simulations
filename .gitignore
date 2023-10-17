@@ -1,5 +1,5 @@
 example_yaml_files/laptop.yaml
-*.ipynb
+*old.ipynb
 outputs*/*
 plots*/*
 .ipynb_checkpoints/*
