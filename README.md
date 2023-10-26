@@ -34,6 +34,7 @@ NaMaster
    - Computed in [noise.py](noise.py).  
 10. Make plots. 
     - Computed in [make_plots.py](make_plots.py) and saved in plot_dir.  
+    - Note: plots can alternatively be made after running the main pipeline ([main.py](main.py)) that saves files and then using the notebook [plot_spectra.ipynb](plot_spectra.ipynb).   
 
 ## Outputs (not including plots)  
 The following outputs are saved in the output directory listed in the yaml file:  
