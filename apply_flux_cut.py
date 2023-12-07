@@ -51,7 +51,7 @@ def initial_masking(inp, map_, map_150):
     mask = np.ones_like(map_)
     cut_val = JytoK(150, inp.nside)*0.1
     mask[map_150 >= cut_val] = 0 #mask pixels >= 100 mJy at 150 GHz
-    print(f'number of pixels over 100 mJy: {len(map_150 >= cut_val)}', flush=True)
+    print(f'number of pixels over 100 mJy: {np.sum(map_150 >= cut_val)}', flush=True)
     if not inp.pol:
         neighbors = hp.pixelfunc.get_all_neighbours(inp.nside, np.where(mask==0)).flatten()
         mask[neighbors] = 0
