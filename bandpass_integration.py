@@ -250,7 +250,7 @@ def combined_map_before_beam(inp, bandpass_freqs, central_freq=None, bandpass_we
 
 
 
-def get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=None, all_bandpass_weights=None, parallel=True):
+def get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs, all_bandpass_weights=None, parallel=True):
     '''
     ARGUMENTS
     ---------
@@ -269,6 +269,7 @@ def get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=None, all
         all galactic and extragalactic combined maps in healpix format
         if pol: all_maps has shape (Nfreqs, 3 for IQU, Npix)
         if not pol: all_maps has shape (Nfreqs, Npix)
+        frequency maps are in decreasing order (220, 150, 90)
     '''
     plot_hist = True if inp.plot_dir else False
     if parallel:

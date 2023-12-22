@@ -50,13 +50,13 @@ def main():
         print('Computed coupling matrix for mask deconvolution', flush=True)
 
     # get galactic and extragalactic component maps
-    all_maps = get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs=[220, 150, 90], all_bandpass_weights=all_bandpass_weights, parallel=False)
+    all_central_freqs = [220, 150, 90]
+    all_maps = get_all_bandpassed_maps(inp, all_bandpass_freqs, all_central_freqs, all_bandpass_weights=all_bandpass_weights, parallel=False)
     pickle.dump(all_maps, open(f'{inp.output_dir}/maps_before_beam.p', 'wb'), protocol=4)
     print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
     
     # get beam-convolved healpix maps at each frequency
-    parallel = True if inp.nside <= 2048 else False
-    beam_convolved_maps = get_all_beam_convolved_maps(inp, all_maps, parallel=parallel)
+    beam_convolved_maps = get_all_beam_convolved_maps(inp, all_maps)
     pickle.dump(beam_convolved_maps, open(f'{inp.output_dir}/beam_convolved_maps.p', 'wb'), protocol=4)
     print('Got beam-convolved maps', flush=True)
 
@@ -65,7 +65,7 @@ def main():
         plot_and_save_mask_deconvolved_spectra(inp, beam_convolved_maps, save_only=True)
 
     # rotate beam-convolved healpix maps from galactic to equatorial coordinates
-    rotated_maps = get_all_rotated_maps(inp, beam_convolved_maps, parallel=parallel)
+    rotated_maps = get_all_rotated_maps(inp, beam_convolved_maps)
     pickle.dump(rotated_maps, open(f'{inp.output_dir}/rotated_healpix_maps.p', 'wb'), protocol=4)
     print('Got rotated maps', flush=True)
 

@@ -26,47 +26,32 @@ def apply_beam(map_, beamfile, pol):
 
 
 
-def get_all_beam_convolved_maps(inp, all_maps, parallel):
+def get_all_beam_convolved_maps(inp, all_maps):
     '''
     ARGUMENTS
     ---------
     inp: Info object containing input specifications
-    all_maps: ndarray of shape (Nfreqs, Npix), 
-             if not pol, or shape (Nfreqs, 3 for I/Q/U, Npix) if pol
-             contains healpix maps of galactic and extragalactic components before beam convolution
-    parallel: Bool, whether to run in parallel (can cause memory issues for large maps)
+    all_maps: ndarray of shape (Nfreqs, Npix) if not pol, 
+            or shape (Nfreqs, 3 for I/Q/U, Npix) if pol (freqs in descending order)
+            contains healpix maps of galactic and extragalactic components before beam convolution
              
     RETURNS
     -------
-    beam_convolved_maps: ndarray of shape (Nfreqs, Nsplits, Npix) if not pol,
-        or shape (Nfreqs, Nsplits, 3 for I/Q/U, Npix) if pol
+    beam_convolved_maps: ndarray of shape (3 for PA4 PA5 PA6, 2 for freqs in array in ascending order, Nsplits, Npix) if not pol,
+        or shape (3 for PA4 PA5 PA6, 2 for freqs in array in ascending order, Nsplits, 3 for I/Q/U, Npix) if pol
         contains beam-convolved healpix maps for each frequency and split
     '''
     
-    freq_maps = all_maps #shape (Nfreqs, Npix) if not pol or (Nfreqs, 3, Npix) if pol
-    beamfiles = []
-    for freq in range(3):
-        for split in range(4):
-            if freq==0:
-                beamfile = f'{inp.beam_dir}/set{split}_pa4_f220_night_beam_tform_jitter_cmb.txt'
-            elif freq==1:
-                beamfile = f'{inp.beam_dir}/set{split}_pa5_f150_night_beam_tform_jitter_cmb.txt'
-            elif freq==2:
-                beamfile = f'{inp.beam_dir}/set{split}_pa6_f090_night_beam_tform_jitter_cmb.txt'
-            beamfiles.append(beamfile)
-    
-    if parallel:
-        pool = mp.Pool(12)
-        results = pool.starmap(apply_beam, [(freq_maps[i//4], beamfiles[i], inp.pol) for i in range(12)])
-        pool.close()
-        results = np.array(results, dtype=np.float32)
-    else:
-        results = []
-        for i in range(12):
-            results.append(apply_beam(freq_maps[i//4], beamfiles[i], inp.pol))
-
-    if not inp.pol: #index as all_maps[freq, split, pixel], freqs in decreasing order
-        beam_convolved_maps = np.reshape(results, (3, 4, 12*inp.nside**2))
-    else: #index as all_maps[freq, split, I/Q/U, pixel], freqs in decreasing order
-        beam_convolved_maps = np.reshape(results, (3, 4, 3, 12*inp.nside**2))
+    freq_maps = all_maps #shape (Nfreqs, Npix) if not pol or (Nfreqs, 3, Npix) if pol (freqs in decreasing order)
+    if not inp.pol: #index as beam_convolved_maps[PA, freq, split, pixel], freqs in ascending order
+        beam_convolved_maps = np.zeros((3, 2, 4, 12*inp.nside**2), dtype=np.float32)
+    else: #index as beam_convolved_maps[PA, freq, split, I/Q/U, pixel], freqs in ascending order
+        beam_convolved_maps = np.zeros((3, 2, 4, 3, 12*inp.nside**2), dtype=np.float32)
+    pa_freq_dict = {4:[150,220], 5:[90,150], 6:[90,150]}
+    all_maps_freq_idx = {220:0, 150:1, 90:2} #map frequency to index in all_maps
+    for p, pa in enumerate([4, 5, 6]):
+        for i, freq in enumerate(pa_freq_dict[pa]):
+            for split in range(4):
+                beamfile = f'{inp.beam_dir}/set{split}_pa{pa}_f{freq:0>3}_night_beam_tform_jitter_cmb.txt'
+                beam_convolved_maps[p, i, split] = apply_beam(freq_maps[all_maps_freq_idx[freq]], beamfile, inp.pol)
     return beam_convolved_maps

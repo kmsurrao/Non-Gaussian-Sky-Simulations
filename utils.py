@@ -51,7 +51,10 @@ def get_CAR_shape_and_wcs(inp):
         res = np.pi/inp.ellmax*(180/np.pi)*60.
         shape, wcs = enmap.fullsky_geometry(res=res * utils.arcmin, proj='car')
     else:
-        noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set0_noise_sim_map9061021.fits'
+        if inp.noise_type == 'tiled':
+            noise_file = f'{inp.noise_dir}/act_dr6v4_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set0_noise_sim_map9061021.fits'
+        elif inp.noise_type == 'stitched':
+            noise_file = f'{inp.noise_dir}/act_dr6v4_fdw_cmbmask_4000_prof_cosine_5000_tile_cmbmask_pa4_f150_pa4_f220_lmax10800_4way_set0_noise_sim_map40294_103094.fits'
         noise_map = 10**(-6)*enmap.read_map(noise_file)[1,0]
         if not inp.pol:
             noise_map = noise_map[0]

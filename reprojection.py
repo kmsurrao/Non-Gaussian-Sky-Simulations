@@ -28,15 +28,14 @@ def eshow(x,**kwargs):
     enplot.show(enplot.plot(x,**kwargs))
 
 
-def get_all_CAR_maps(inp, rotated_maps, parallel=False):
+def get_all_CAR_maps(inp, rotated_maps):
     '''
     ARGUMENTS
     ---------
     inp: Info object containing input specifications
-    rotated_maps: ndarray of shape (Nfreqs, Nsplits, Npix) if not pol,
-        or shape (Nfreqs, Nsplits, 3 for I/Q/U, Npix) if pol
-        contains beam-convolved healpix maps for each frequency and split (already rotated)
-    parallel: Bool, whether to run reprojection in parallel (can cause memory issues)
+    rotated_maps: ndarray of shape (3 for PA4 PA5 PA6, 2 for freqs in array in ascending order, Nsplits, Npix) if not pol,
+        or shape (3 for PA4 PA5 PA6, 2 for freqs in array in ascending order, Nsplits, 3 for I/Q/U, Npix) if pol
+        contains beam-convolved healpix maps for each frequency and split (already rotated to equatorial coordinates)
     
     RETURNS
     -------
@@ -44,25 +43,14 @@ def get_all_CAR_maps(inp, rotated_maps, parallel=False):
 
     '''
     car_maps = []
-    freqs = [220, 150, 90]
-
     shape, wcs = get_CAR_shape_and_wcs(inp)
-
-    if parallel:
-        pool = mp.Pool(12)
-        results = pool.starmap(healpix2CAR, [(inp, rotated_maps[i//4, i%4]) for i in range(12)])
-        pool.close()
-    
-    idx = 0
-    for freq in range(3):
-        for split in range(4):
-            if parallel:
-                map_to_write = results[idx]
-            else:
-                map_to_write = healpix2CAR(inp, rotated_maps[freq, split])
-            map_to_write = enmap.ndmap(map_to_write, wcs) 
-            car_maps.append(map_to_write)
-            enmap.write_map(f'{inp.output_dir}/sim_{freqs[freq]}GHz_split{split}', map_to_write)
-            idx += 1
-    
+    pa_freq_dict = {4:[150,220], 5:[90,150], 6:[90,150]}
+    for p, pa in enumerate([4, 5, 6]):
+        for i, freq in enumerate(pa_freq_dict[pa]):
+            for split in range(4):
+                map_to_write = healpix2CAR(inp, rotated_maps[p, i, split])
+                map_to_write = enmap.ndmap(map_to_write, wcs) 
+                car_maps.append(map_to_write)
+                enmap.write_map(f'{inp.output_dir}/sim_pa{pa}_{freq}GHz_split{split}_noiseless', map_to_write)
+        
     return car_maps
