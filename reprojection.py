@@ -1,7 +1,6 @@
-import numpy as np
 from utils import get_CAR_shape_and_wcs
 from pixell import enmap, reproject, enplot
-import multiprocessing as mp
+from tqdm import tqdm
 
 
 
@@ -42,12 +41,13 @@ def get_all_CAR_maps(inp, rotated_maps):
     car_maps: list of maps in CAR format
 
     '''
+    print('Reprojecting to CAR...', flush=True)
     car_maps = []
     shape, wcs = get_CAR_shape_and_wcs(inp)
     pa_freq_dict = {4:[150,220], 5:[90,150], 6:[90,150]}
-    for p, pa in enumerate([4, 5, 6]):
-        for i, freq in enumerate(pa_freq_dict[pa]):
-            for split in range(4):
+    for p, pa in enumerate(tqdm([4, 5, 6], desc='PA')):
+        for i, freq in enumerate(tqdm(pa_freq_dict[pa], desc='Freq')):
+            for split in tqdm(range(4), desc='Split'):
                 map_to_write = healpix2CAR(inp, rotated_maps[p, i, split])
                 map_to_write = enmap.ndmap(map_to_write, wcs) 
                 car_maps.append(map_to_write)

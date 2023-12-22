@@ -2,9 +2,11 @@ import os
 import subprocess
 import pickle
 import argparse
+import numpy as np
+import healpy as hp
 from input import Info
 from bandpass_integration import get_all_bandpassed_maps, get_all_bandpass_freqs_and_weights
-from beams import get_all_beam_convolved_maps
+from beams import get_all_beam_convolved_maps, get_all_beam_convolved_alm
 from reprojection import get_all_CAR_maps
 from make_plots import plot_outputs
 from galactic_mask import compute_coupling_matrices, plot_and_save_mask_deconvolved_spectra
@@ -55,28 +57,36 @@ def main():
     pickle.dump(all_maps, open(f'{inp.output_dir}/maps_before_beam.p', 'wb'), protocol=4)
     print('Got maps of galactic and extragalactic components at 220, 150, and 90 GHz', flush=True)
     
-    # get beam-convolved healpix maps at each frequency
-    beam_convolved_maps = get_all_beam_convolved_maps(inp, all_maps)
-    pickle.dump(beam_convolved_maps, open(f'{inp.output_dir}/beam_convolved_maps.p', 'wb'), protocol=4)
-    print('Got beam-convolved maps', flush=True)
+    # get beam-convolved healpix map alm at each frequency
+    beam_convolved_alm = get_all_beam_convolved_alm(inp, all_maps)
+    pickle.dump(beam_convolved_alm, open(f'{inp.output_dir}/beam_convolved_alm.p', 'wb'), protocol=4)
+    print('\nGot beam-convolved alm', flush=True)
 
     # save mask-deconvolved spectra using 70% fsky galactic mask (do not plot yet)
     if 'freq_map_mask_deconvolution' in inp.checks:
+        if not inp.pol:
+            beam_convolved_maps = np.zeros((3, 2, 4, 12*inp.nside**2), dtype=np.float32)
+        else:
+            beam_convolved_maps = np.zeros((3, 2, 4, 3, 12*inp.nside**2), dtype=np.float32)
+        for p in range(3):
+            for i in range(2):
+                for split in range(4):
+                    beam_convolved_maps[p,i,split] = hp.alm2map(beam_convolved_alm[p,i,split], inp.nside)
         plot_and_save_mask_deconvolved_spectra(inp, beam_convolved_maps, save_only=True)
 
     # rotate beam-convolved healpix maps from galactic to equatorial coordinates
     rotated_maps = get_all_rotated_maps(inp, beam_convolved_maps)
     pickle.dump(rotated_maps, open(f'{inp.output_dir}/rotated_healpix_maps.p', 'wb'), protocol=4)
-    print('Got rotated maps', flush=True)
+    print('\nGot rotated maps', flush=True)
 
     # convert each frequency map from healpix to CAR
     car_maps = get_all_CAR_maps(inp, rotated_maps)
-    print('Got CAR maps', flush=True)
+    print('\nGot CAR maps', flush=True)
 
     # add noise if noise_dir provided
     if inp.noise_dir is not None:
         car_maps = save_all_noise_added_maps(inp)
-        print('Added noise to maps', flush=True)
+        print('\nAdded noise to maps', flush=True)
 
     # make plots
     if len(inp.plots_to_make) > 0:

@@ -2,6 +2,7 @@ import numpy as np
 from utils import get_CAR_shape_and_wcs
 from pixell import enmap
 import multiprocessing as mp
+from tqdm import tqdm
 
 def add_noise(inp, freq, split, pa):
     '''
@@ -56,6 +57,21 @@ def add_noise(inp, freq, split, pa):
     return map_to_write
 
 
+def add_noise_star(args):
+    '''
+    Useful for using multiprocessing imap
+    (imap supports tqdm but starmap does not)
+
+    ARGUMENTS
+    ---------
+    args: arguments to function add_noise
+
+    RETURNS
+    -------
+    function of *args, add_noise(inp, freq, split, pa)
+    '''
+    return add_noise(*args)
+
 
 def save_all_noise_added_maps(inp):
     '''
@@ -79,8 +95,10 @@ def save_all_noise_added_maps(inp):
                 splits_list.append(split)
                 pa_list.append(pa)
 
+    print('Adding noise...', flush=True)
     pool = mp.Pool(12)
-    car_maps = pool.starmap(add_noise, [(inp, freqs_list[i], splits_list[i], pa_list[i]) for i in range(len(freqs_list))])
+    inputs = [(inp, freqs_list[i], splits_list[i], pa_list[i]) for i in range(len(freqs_list))]
+    car_maps = list(tqdm(pool.imap(add_noise_star, inputs), total=len(freqs_list)))
     pool.close()
     
     return car_maps
